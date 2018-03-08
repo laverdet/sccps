@@ -1,4 +1,16 @@
 #include "./position.h"
+#include "./terrain.h"
+
+static std::unordered_map<room_location_t, terrain_t> terrain_map;
+
+const terrain_t& room_location_t::get_terrain() const {
+	auto ii = terrain_map.find(*this);
+	if (ii == terrain_map.end()) {
+		ii = terrain_map.emplace(std::piecewise_construct, std::forward_as_tuple(*this), std::forward_as_tuple()).first;
+		ii->second.load(*this);
+	}
+	return ii->second;
+}
 
 std::ostream& operator<< (std::ostream& os, const room_location_t& that) {
 	if (that.xx == 0 && that.yy == 0) {

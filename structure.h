@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include "./creep.h"
 #include "./object.h"
 
 /**

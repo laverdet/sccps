@@ -5,13 +5,14 @@ const exports = module.exports = {
 	read(env, ptr) {
 		let xx = env.HEAPU16[ptr >> 1];
 		let yy = env.HEAPU16[(ptr + 2) >> 1];
-		if (xx < 50 && yy < 50) {
-			return new RoomPosition(xx % 50, yy % 50, 'sim');
+		return new RoomPosition(xx % 50, yy % 50, exports.generateRoomName(xx / 50 | 0, yy / 50 | 0));
+	},
+
+	generateRoomName(rx, ry) {
+		if (rx === 0 && ry === 0) {
+			return 'sim';
 		} else {
-			let rx = xx / 50 | 0;
-			let ry = yy / 50 | 0;
-			return new RoomPosition(
-				xx % 50, yy % 50,
+			return (
 				(rx <= kWorldSize >> 1 ? 'W'+ ((kWorldSize >> 1) - rx) : 'E'+ (rx - (kWorldSize >> 1) - 1))+
 				(ry <= kWorldSize >> 1 ? 'N'+ ((kWorldSize >> 1) - ry) : 'S'+ (ry - (kWorldSize >> 1) - 1))
 			);

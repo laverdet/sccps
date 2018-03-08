@@ -7,6 +7,7 @@ const screeps = {
 	game: require('game'),
 	position: require('position'),
 	resource: require('resource'),
+	room: require('room'),
 	string: require('string'),
 	structure: require('structure'),
 	util: require('util'),
@@ -23,10 +24,15 @@ const mod = runtime({
 	screeps: screeps,
 });
 
-mod.init();
+try {
+	mod.init();
+} catch (err) {
+	console.log('Uncaught error in init()', err.stack || err.message || err);
+	throw err;
+}
 module.exports.loop = function() {
-	mod.preloop();
 	try {
+		mod.preloop();
 		mod.loop();
 	} catch (err) {
 		console.log('Uncaught error', err.stack || err.message || err);

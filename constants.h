@@ -8,3 +8,4 @@ constexpr int kMaximumPathLength = 1500;
 
 // Screeps constants
 constexpr int kMaxCreepSize = 50;
+constexpr int kMaxFlagNameLength = 60;

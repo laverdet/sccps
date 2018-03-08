@@ -46,5 +46,6 @@ const exports = module.exports = {
 		for (let ii = array.length - 1; ii >= 0; --ii) {
 			exports.write(env, ArrayLib.push(env, arrayPtr, sizeof), array[ii]);
 		}
+		return arrayPtr + 4 + env.HEAPU32[arrayPtr >> 2] * sizeof;
 	},
 };
