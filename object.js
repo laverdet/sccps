@@ -3,13 +3,13 @@ const PositionLib = require('position');
 const StringLib = require('string');
 const kWorldSize = 255;
 
-const exports = module.exports = {
+const that = module.exports = {
 	writeRoomObject(env, ptr, obj) {
 		PositionLib.write(env, ptr, obj.pos);
 	},
 
 	writeGameObject(env, ptr, obj) {
-		exports.writeRoomObject(env, ptr, obj);
+		that.writeRoomObject(env, ptr, obj);
 		if (obj.id.length > 24) {
 			throw new Error('`id` overflow');
 		}

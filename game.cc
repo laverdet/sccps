@@ -3,8 +3,6 @@
 #include <emscripten/bind.h>
 #include "game.h"
 
-// Singleton!
-const game_state_t game;
 static mineral_t mineral_hole;
 
 /**
@@ -12,7 +10,26 @@ static mineral_t mineral_hole;
  */
 void game_state_t::clear() {
 	creeps.clear();
+	rooms.clear();
+	sources.clear();
 	structures.clear();
+}
+
+void game_state_t::load() {
+	resource_store_t::preloop();
+	clear();
+	EM_ASM({
+		Module.screeps.game.write(Module, $0, $1, $2, $3, $4, $5, $6, $7);
+	},
+		this,
+		&creeps,
+		&dropped_resources,
+		&flags,
+		&sources,
+		&structures,
+		&tombstones,
+		&mineral_hole
+	);
 }
 
 EMSCRIPTEN_KEEPALIVE
@@ -50,24 +67,6 @@ void init() {
 	structure_t::init();
 }
 
-void preloop() {
-	resource_store_t::preloop();
-	const_cast<game_state_t&>(game).clear();
-	EM_ASM({
-		Module.screeps.game.write(Module, $0, $1, $2, $3, $4, $5, $6, $7);
-	},
-		&game,
-		&game.creeps,
-		&game.dropped_resources,
-		&game.flags,
-		&game.sources,
-		&game.structures,
-		&game.tombstones,
-		&mineral_hole
-	);
-}
-
 EMSCRIPTEN_BINDINGS(screeps) {
 	emscripten::function("init", &init);
-	emscripten::function("preloop", &preloop);
 }

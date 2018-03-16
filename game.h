@@ -31,6 +31,7 @@ struct game_state_t {
 	array_t<tombstone_t, 100> tombstones;
 
 	void clear();
+	void load();
 
 	static void flush_room(
 		game_state_t* game,
@@ -43,5 +44,3 @@ struct game_state_t {
 		void* tombstones_begin, void* tombstones_end
 	);
 };
-
-extern const game_state_t game;

@@ -1,11 +1,12 @@
 'use strict';
 const kWorldSize = 255;
+let visualCache = new Map;
 
-const exports = module.exports = {
+const that = module.exports = {
 	read(env, ptr) {
 		let xx = env.HEAPU16[ptr >> 1];
 		let yy = env.HEAPU16[(ptr + 2) >> 1];
-		return new RoomPosition(xx % 50, yy % 50, exports.generateRoomName(xx / 50 | 0, yy / 50 | 0));
+		return new RoomPosition(xx % 50, yy % 50, that.generateRoomName(xx / 50 | 0, yy / 50 | 0));
 	},
 
 	generateRoomName(rx, ry) {
@@ -31,9 +32,17 @@ const exports = module.exports = {
 		}
 	},
 
+	getVisual(xx, yy) {
+		let visual = visualCache.get(xx * kWorldSize + yy);
+		if (visual === undefined) {
+			visualCache.set(xx * kWorldSize + yy, visual = new RoomVisual(that.generateRoomName(xx, yy)));
+		}
+		return visual;
+	},
+
 	write(env, ptr, pos) {
-		let room = exports.parseRoomName(pos.roomName);
-		env.HEAPU16[(ptr + 0) >> 1] = pos.x + room.rx;
-		env.HEAPU16[(ptr + 2) >> 1] = pos.y + room.ry;
+		let room = that.parseRoomName(pos.roomName);
+		env.HEAPU16[(ptr + 0) >> 1] = pos.x + room.rx * 50;
+		env.HEAPU16[(ptr + 2) >> 1] = pos.y + room.ry * 50;
 	},
 };

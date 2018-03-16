@@ -18,7 +18,7 @@ const [ bodyPartEnum ] = util.enumToMap([
 let sizeof;
 let creepLayout;
 
-const exports = module.exports = {
+const that = module.exports = {
 	init(layout) {
 		sizeof = layout.sizeof;
 		creepLayout = Object.freeze(layout);
@@ -44,7 +44,7 @@ const exports = module.exports = {
 
 	writeToArray(env, arrayPtr, array) {
 		for (let ii = array.length - 1; ii >= 0; --ii) {
-			exports.write(env, ArrayLib.push(env, arrayPtr, sizeof), array[ii]);
+			that.write(env, ArrayLib.push(env, arrayPtr, sizeof), array[ii]);
 		}
 		return arrayPtr + 4 + env.HEAPU32[arrayPtr >> 2] * sizeof;
 	},

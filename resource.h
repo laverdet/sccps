@@ -29,6 +29,11 @@ enum struct resource_t {
 struct resource_store_t {
 	public:
 		using value_type = uint32_t;
+		struct reference {
+			const resource_t type;
+			value_type& amount;
+			reference(resource_t type, value_type& amount) : type(type), amount(amount) {}
+		};
 
 	private:
 		using extended_resource_store_t = std::array<value_type, (int)resource_t::size>;
@@ -37,81 +42,61 @@ struct resource_store_t {
 		value_type single_amount;
 
 		static array_t<extended_resource_store_t, kExtraStoreReservation> extended_stores;
-		static const value_type zero;
 
 		void promote() {
 			extended = &extended_stores.emplace_back();
 			(*extended)[(int)single_type] = single_amount;
 		}
 
-		template <typename value_type, typename store_type>
+		template <typename store_type, typename reference_type>
 		class iterator_base {
 			private:
-				struct reference {
-					const resource_t type;
-					value_type& amount;
-					reference(resource_t type, value_type& amount) : type(type), amount(amount) {}
-				};
 				store_type& store;
-				reference val;
-
-				void increment() {
-					if (store.extended == nullptr) {
-						const_cast<resource_t&>(val.type) = resource_t::size;
-					} else {
-						resource_t type = val.type;
-						do {
-							type = static_cast<resource_t>((int)type + 1);
-						} while (type != resource_t::size && (*store.extended)[(int)type] == 0);
-						// horrifying
-						val.~reference();
-						new(&val) reference(type, (*store.extended)[(int)type]);
-					}
-				}
+				resource_t type;
 
 			public:
-				using iterator_category = std::forward_iterator_tag;
-				iterator_base(
-					store_type& store,
-					resource_t type
-				) :
-					store(store),
-					val(type, store.extended == nullptr ? store.single_amount : (*store.extended)[0]) {
+				iterator_base(store_type& store, resource_t type) : store(store), type(type) {
 					if (store.extended != nullptr && type != resource_t::size && (*store.extended)[(int)type] == 0) {
-						increment();
+						++(*this);
 					}
 				}
 				iterator_base(const iterator_base&) = default;
 				iterator_base& operator=(const iterator_base&) = default;
 				~iterator_base() = default;
 
+				reference operator*() const {
+					if (store.extended) {
+						return reference(type, (*store.extended)[(int)type]);
+					} else {
+						return reference(type, store.single_amount);
+					}
+				}
+
 				iterator_base& operator++() {
-					increment();
+					if (store.extended == nullptr) {
+						type = resource_t::size;
+					} else {
+						do {
+							type = static_cast<resource_t>((int)type + 1);
+						} while (type != resource_t::size && (*store.extended)[(int)type] == 0);
+					}
 					return *this;
 				}
 
 				iterator_base operator++(int) {
 					iterator_base copy(*this);
-					increment();
+					++(*this);
 					return copy;
 				}
 
-				reference& operator*() {
-					return val;
-				}
-
-				bool operator==(const iterator_base& rhs) const {
-					return val.type == rhs.val.type;
-				}
-
 				bool operator!=(const iterator_base& rhs) const {
-					return val.type != rhs.val.type;
+					return type != rhs.val.type;
 				}
 		};
 
 	public:
-		using iterator = iterator_base<value_type, resource_store_t>;
-		using const_iterator = iterator_base<const value_type, const resource_store_t>;
+		using iterator = iterator_base<resource_store_t, reference>;
+		using const_iterator = iterator_base<const resource_store_t, const reference>;
 
 		static void init();
 		static void preloop();
@@ -132,12 +117,12 @@ struct resource_store_t {
 			return (*extended)[(int)type];
 		}
 
-		const value_type& operator[](resource_t type) const {
+		value_type operator[](resource_t type) const {
 			if (extended == nullptr) {
 				if (single_type == type) {
 					return single_amount;
 				} else {
-					return zero;
+					return 0;
 				}
 			}
 			return (*extended)[(int)type];

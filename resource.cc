@@ -12,4 +12,3 @@ void resource_store_t::preloop() {
 }
 
 array_t<resource_store_t::extended_resource_store_t, kExtraStoreReservation> resource_store_t::extended_stores;
-const resource_store_t::value_type resource_store_t::zero = 0;

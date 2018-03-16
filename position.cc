@@ -1,15 +1,13 @@
 #include "./position.h"
 #include "./terrain.h"
+#include <emscripten.h>
 
-static std::unordered_map<room_location_t, terrain_t> terrain_map;
-
-const terrain_t& room_location_t::get_terrain() const {
-	auto ii = terrain_map.find(*this);
-	if (ii == terrain_map.end()) {
-		ii = terrain_map.emplace(std::piecewise_construct, std::forward_as_tuple(*this), std::forward_as_tuple()).first;
-		ii->second.load(*this);
+const terrain_t& room_location_t::terrain() const {
+	static terrain_t* terrain_map[room_location_t::max]{nullptr};
+	if (terrain_map[id] == nullptr) {
+		terrain_map[id] = new terrain_t(*this);
 	}
-	return ii->second;
+	return *terrain_map[id];
 }
 
 std::ostream& operator<< (std::ostream& os, const room_location_t& that) {
@@ -26,11 +24,23 @@ std::ostream& operator<< (std::ostream& os, const room_location_t& that) {
 	return os;
 }
 
-room_location_t position_t::room_location() const {
-	return room_location_t(xx / 50, yy / 50);
-};
+void room_location_t::draw_circle(double xx, double yy, const room_location_t::circle_t& options) const {
+	EM_ASM({
+		Module.screeps.position.getVisual($0, $1).circle($2, $3, {
+			'radius': $4,
+			'fill': '#' + Module.screeps.util.pad($5, 6, 'f'),
+			'opacity': $6,
+			'stroke': $7 === 0xff000000 ? undefined : '#' + Module.screeps.util.pad($7, 6, 'f'),
+			'strokeWidth': $8,
+		});
+	}, this->xx, this->yy, xx, yy, options.radius, options.fill, options.opacity, options.stroke, options.stroke_width);
+}
 
+std::ostream& operator<< (std::ostream& os, const local_position_t& that) {
+	os <<"local_position_t[" <<(int)(that.xx % 50) <<", " <<(int)(that.yy % 50) <<"]";
+	return os;
+}
 std::ostream& operator<< (std::ostream& os, const position_t& that) {
-	os <<"position_t[" <<that.room_location() <<"] " <<that.xx % 50 <<", " <<that.yy % 50 <<")";
+	os <<"position_t[" <<that.room_location() <<", " <<that.xx % 50 <<", " <<that.yy % 50 <<"]";
 	return os;
 }

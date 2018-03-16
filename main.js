@@ -32,7 +32,6 @@ try {
 }
 module.exports.loop = function() {
 	try {
-		mod.preloop();
 		mod.loop();
 	} catch (err) {
 		console.log('Uncaught error', err.stack || err.message || err);

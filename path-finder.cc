@@ -1,6 +1,8 @@
 #include "./path-finder.h"
 #include <emscripten.h>
 
+const cost_matrix_t cost_matrix_t::cost_matrix0{};
+
 path_finder_t::result_t path_finder_t::search(const position_t origin, const std::vector<goal_t>& goals, const options_t& options) {
 	result_t result;
 	result.path = std::make_unique<path_t>();
@@ -21,7 +23,9 @@ path_finder_t::result_t path_finder_t::search(const position_t origin, const std
 		}
 		var result = PathFinder.search(
 			Module.screeps.position.read(Module, $0),
-			Module.screeps.vector.map(Module, $1, $2, 4, Module.screeps.position.read),
+			Module.screeps.vector.map(Module, $1, $2, 4, function(env, ptr) {
+				return { pos: Module.screeps.position.read(env, ptr), range: env.HEAPU8[ptr + 4] };
+			}),
 			{
 				plainCost: $3,
 				swampCost: $4,
@@ -44,7 +48,7 @@ path_finder_t::result_t path_finder_t::search(const position_t origin, const std
 		options.flee,
 		options.max_ops, options.max_rooms, options.max_cost,
 		options.heuristic_weight,
-		options.room_callback,
+		options.room_callback ? &options : nullptr,
 		result.path.get(),
 		&result.ops, &result.cost, &result.incomplete
 	);
@@ -52,8 +56,7 @@ path_finder_t::result_t path_finder_t::search(const position_t origin, const std
 }
 
 EMSCRIPTEN_KEEPALIVE
-void* path_finder_t::callback_trampoline(void* fn, int xx, int yy) {
-	auto callback = reinterpret_cast<callback_t>(fn);
-	std::shared_ptr<cost_matrix_t> cost_matrix = callback(room_location_t(xx, yy));
-	return cost_matrix.get();
+const void* path_finder_t::callback_trampoline(void* fn, int xx, int yy) {
+	options_t& options = *reinterpret_cast<options_t*>(fn);
+	return reinterpret_cast<const void*>(options.room_callback(room_location_t(xx, yy)));
 }

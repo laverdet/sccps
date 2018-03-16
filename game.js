@@ -9,6 +9,7 @@ module.exports = {
 		let rooms = Object.keys(Game.rooms);
 		let flushes = Array(rooms.length);
 		let creepsBegin = creepsPtr + 4;
+		let sourcesBegin = sourcesPtr + 4;
 		let structuresBegin = structuresPtr + 4;
 		for (let ii = rooms.length - 1; ii >= 0; --ii) {
 			// Get initial array state
@@ -16,6 +17,7 @@ module.exports = {
 
 			// Push room to arrays
 			let creepsEnd = CreepLib.writeToArray(env, creepsPtr, room.find(FIND_CREEPS));
+			let sourcesEnd = RoomLib.writeSourcesToArray(env, sourcesPtr, room.find(FIND_SOURCES));
 			let structuresEnd = StructureLib.writeToArray(env, structuresPtr, room.find(FIND_STRUCTURES));
 			let minerals = room.find(FIND_MINERALS);
 			if (minerals.length === 1) {
@@ -36,11 +38,12 @@ module.exports = {
 				room.energyAvailable, room.energyCapacityAvailable,
 				creepsBegin, creepsEnd,
 				0, 0, // dropped
-				0, 0, // source
+				sourcesBegin, sourcesEnd,
 				structuresBegin, structuresEnd,
 				0, 0, // tombstone
 			];
 			creepsBegin = creepsEnd;
+			sourcesBegin = sourcesEnd;
 			structuresBegin = structuresEnd;
 		}
 

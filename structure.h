@@ -82,13 +82,13 @@ struct spawn_t : structure_with_hits_t {
 
 // Used to reserve enough space in the array memory for any structure
 union structure_union_t {
-	structure_t structure;
+	struct {
+		position_t pos;
+		id_t id;
+		structure_t::type_t type;
+	};
 
 	controller_t controller;
 	extension_t extension;
 	spawn_t spawn;
-
-	structure_t::type_t type() const {
-		return structure.type;
-	}
 };

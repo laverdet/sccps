@@ -58,6 +58,8 @@ let extendedResourceStorePtr;
 let extendedResourceStoreSizeof;
 
 module.exports = {
+	resourceEnum,
+
 	init(ptr, sizeof) {
 		extendedResourceStorePtr = ptr;
 		extendedResourceStoreSizeof = sizeof;

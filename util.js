@@ -9,13 +9,20 @@ module.exports = {
 	enumToMap(list) {
 		return [
 			Object.freeze(list.reduce(function(map, val, ii) {
-				map.set(ii, val);
-				return map;
-			}, new Map)),
-			Object.freeze(list.reduce(function(map, val, ii) {
 				map.set(val, ii);
 				return map;
 			}, new Map)),
+			Object.freeze(list.reduce(function(map, val, ii) {
+				map.set(ii, val);
+				return map;
+			}, new Map)),
 		];
+	},
+
+	pad(str, num, char) {
+		while (str.length < num) {
+			str = char + str;
+		}
+		return str;
 	},
 };

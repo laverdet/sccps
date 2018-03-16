@@ -1,7 +1,7 @@
 #include "./terrain.h"
 #include <emscripten.h>
 
-void terrain_t::load(room_location_t room) {
+terrain_t::terrain_t(room_location_t room) {
 	EM_ASM({
 		var roomName = Module.screeps.position.generateRoomName($0, $1);
 		var view = new Uint8Array(Module.buffer, $2, 625);

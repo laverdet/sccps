@@ -1,12 +1,10 @@
 #pragma once
 #include "./constants.h"
+#include "./iterator.h"
 #include "./object.h"
 #include "./position.h"
 #include "./resource.h"
 #include "./structure.h"
-#include <functional>
-#include <unordered_map>
-#include <vector>
 
 enum class color_t {
 	blue,
@@ -54,8 +52,7 @@ struct tombstone_t : public game_object_t {
 
 class room_t {
 	private:
-		template <typename T> using list_t = std::vector<std::reference_wrapper<T>>;
-		static std::unordered_map<room_location_t, terrain_t> terrain_map;
+		template <typename T> using list_t = pointer_container_t<T>;
 
 	public:
 		room_location_t location;
@@ -70,7 +67,7 @@ class room_t {
 		// mineral
 		list_t<creep_t> creeps;
 		list_t<dropped_resource_t> dropped_resources;
-		list_t<flag_t> flags;
+		// list_t<flag_t> flags;
 		list_t<source_t> sources;
 		list_t<structure_union_t> structures;
 		list_t<tombstone_t> tombstones;
@@ -92,10 +89,17 @@ class room_t {
 			dropped_resources(dropped_resources_begin, dropped_resources_end),
 			sources(sources_begin, sources_end),
 			structures(structures_begin, structures_end),
-			tombstones(tombstones_begin, tombstones_end) {}
+			tombstones(tombstones_begin, tombstones_end
+		) {
+			for (auto& ii : structures) {
+				if (ii.type == structure_t::controller) {
+					controller = &ii.controller;
+				}
+			}
+		}
 
-		const terrain_t& get_terrain() const {
-			return location.get_terrain();
+		const terrain_t& terrain() const {
+			return location.terrain();
 		}
 
 		static void init();

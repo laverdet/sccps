@@ -5,22 +5,14 @@
 #include <memory>
 #include <vector>
 
-struct cost_matrix_t {
-	uint8_t bits[2500];
-
-	uint8_t get(uint8_t xx, uint8_t yy) {
-		return bits[xx * 50 + yy];
-	}
-
-	void set(uint8_t xx, uint8_t yy, uint8_t cost) {
-		bits[xx * 50 + yy] = cost;
-	}
+struct cost_matrix_t : public local_matrix_t<uint8_t> {
+	static const cost_matrix_t cost_matrix0;
 };
 
 struct path_finder_t {
 	using path_t = array_t<position_t, kMaximumPathLength>;
 	using path_ptr_t = std::unique_ptr<path_t>;
-	using callback_t = std::shared_ptr<cost_matrix_t>(*)(room_location_t);
+	using callback_t = std::function<const cost_matrix_t*(room_location_t)>;
 
 	struct options_t {
 		uint8_t plain_cost = 1;
@@ -44,7 +36,8 @@ struct path_finder_t {
 		position_t pos;
 		uint8_t range;
 	};
+	using goals_t = std::vector<goal_t>;
 
-	static result_t search(const position_t origin, const std::vector<goal_t>& goals, const options_t& options);
-	static void* callback_trampoline(void* fn, int xx, int yy);
+	static result_t search(const position_t origin, const goals_t& goals, const options_t& options);
+	static const void* callback_trampoline(void* fn, int xx, int yy);
 };
