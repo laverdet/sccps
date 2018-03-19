@@ -81,6 +81,10 @@ class random_access_iterator_t {
 			return (that() < rhs) || (that() == rhs);
 		}
 
+		constexpr auto&& operator[](int index) const {
+			return *(*this + index);
+		}
+
 		constexpr T& operator++() {
 			return that() += 1;
 		}

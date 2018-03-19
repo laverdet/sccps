@@ -6,6 +6,7 @@
 #include <vector>
 
 struct cost_matrix_t : public local_matrix_t<uint8_t> {
+	using local_matrix_t<uint8_t>::local_matrix_t;
 	static const cost_matrix_t cost_matrix0;
 };
 

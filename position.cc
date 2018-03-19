@@ -36,6 +36,15 @@ void room_location_t::draw_circle(double xx, double yy, const room_location_t::c
 	}, this->xx, this->yy, xx, yy, options.radius, options.fill, options.opacity, options.stroke, options.stroke_width);
 }
 
+void room_location_t::draw_text(double xx, double yy, const std::string& string) const {
+	EM_ASM({
+		Module.screeps.position.getVisual($0, $1).text(
+			Module.screeps.string.readOneByteStringData(Module, $2, $3),
+			$4, $5
+		);
+	}, this->xx, this->yy, string.c_str(), string.length(), xx, yy);
+}
+
 std::ostream& operator<< (std::ostream& os, const local_position_t& that) {
 	os <<"local_position_t[" <<(int)(that.xx % 50) <<", " <<(int)(that.yy % 50) <<"]";
 	return os;
