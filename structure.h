@@ -3,6 +3,8 @@
 #include "./creep.h"
 #include "./object.h"
 
+namespace screeps {
+
 /**
  * unowned structures:
  * container, road, wall, portal
@@ -92,3 +94,5 @@ union structure_union_t {
 	extension_t extension;
 	spawn_t spawn;
 };
+
+} // namespace screeps

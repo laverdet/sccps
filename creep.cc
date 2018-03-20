@@ -1,6 +1,8 @@
 #include "./creep.h"
 #include <emscripten.h>
 
+namespace screeps {
+
 int creep_t::build(const game_object_t& target) const {
 	return EM_ASM_INT({
 		return Module.screeps.util.getObjectById(Module, $0).build(Module.screeps.util.getObjectById(Module, $1));
@@ -92,3 +94,5 @@ void creep_t::init() {
 		offsetof(creep_t, ticksToLive)
 	);
 }
+
+} // namespace screeps

@@ -1,6 +1,8 @@
 #include "./terrain.h"
 #include <emscripten.h>
 
+namespace screeps {
+
 terrain_t::terrain_t(room_location_t room) {
 	EM_ASM({
 		var roomName = Module.screeps.position.generateRoomName($0, $1);
@@ -27,3 +29,5 @@ terrain_t::terrain_t(room_location_t room) {
 		}
 	}, room.xx, room.yy, this);
 }
+
+} // namespace screeps

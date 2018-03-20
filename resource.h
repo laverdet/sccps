@@ -3,6 +3,8 @@
 #include <cstdint>
 #include "./array.h"
 
+namespace screeps {
+
 constexpr int kExtraStoreReservation = 100;
 
 // Resource types
@@ -37,11 +39,10 @@ struct resource_store_t {
 
 	private:
 		using extended_resource_store_t = std::array<value_type, (int)resource_t::size>;
+		static inline array_t<extended_resource_store_t, kExtraStoreReservation> extended_stores;
 		extended_resource_store_t* extended;
 		resource_t single_type;
 		value_type single_amount;
-
-		static array_t<extended_resource_store_t, kExtraStoreReservation> extended_stores;
 
 		void promote() {
 			extended = &extended_stores.emplace_back();
@@ -156,3 +157,5 @@ struct resource_store_t {
 			return const_iterator(*this, resource_t::size);
 		}
 };
+
+} // namespace screeps

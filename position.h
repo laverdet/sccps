@@ -1,10 +1,12 @@
 #pragma once
 #include "./iterator.h"
+#include "./memory.h"
 #include <array>
 #include <iostream>
 #include <limits>
 #include <unordered_map>
-constexpr int kWorldSize = 255;
+
+namespace screeps {
 
 // These will match the constants in game
 enum struct direction_t { top = 1, top_right, right, bottom_right, bottom, bottom_left, left, top_left };
@@ -122,32 +124,83 @@ class dynamic_neighbor_iterable_t {
 		}
 };
 
-// This is replacement for `roomName` in the JS API.
-// "E0S0" -> { xx: 128, yy: 128 }
-struct room_location_t {
+// Base class for xx/yy pairs which implements some commonalities between the various game positions
+template <typename Derived, typename Integral, typename IntegralUnion>
+struct coord_base_t {
 	union {
-		uint16_t id;
+		IntegralUnion id;
 		struct {
-			uint8_t xx, yy;
+			Integral xx, yy;
 		};
 	};
-	static constexpr size_t max = std::numeric_limits<decltype(id)>::max();
+	static constexpr size_t max = std::numeric_limits<IntegralUnion>::max();
 
-	room_location_t() = default;
-	constexpr room_location_t(uint16_t xx, uint16_t yy) : xx(xx), yy(yy) {}
-	constexpr room_location_t(const room_location_t& that) : xx(that.xx), yy(that.yy) {}
+	coord_base_t() = default;
+	coord_base_t(memory_t& memory) {
+		memory <<*this;
+	}
+	constexpr coord_base_t(Integral xx, Integral yy) : xx(xx), yy(yy) {}
+	constexpr coord_base_t(const coord_base_t& that) = default;
 
-	const class terrain_t& terrain() const;
+	friend memory_t& operator<<(memory_t& memory, coord_base_t that) {
+		memory <<that.xx <<that.yy;
+		return memory;
+	}
 
-	constexpr bool operator==(const room_location_t& rhs) const {
+	friend memory_t& operator>>(memory_t& memory, coord_base_t& that) {
+		memory >>that.xx >>that.yy;
+		return memory;
+	}
+
+	constexpr bool operator==(coord_base_t rhs) const {
 		return id == rhs.id;
 	}
 
-	constexpr bool operator!=(const room_location_t& rhs) const {
+	constexpr bool operator!=(coord_base_t rhs) const {
 		return id != rhs.id;
 	}
 
-	friend std::ostream& operator<< (std::ostream& os, const room_location_t& that);
+	uint8_t distance_to(coord_base_t that) const {
+		return std::max(std::abs(xx - that.xx), std::abs(yy - that.yy));
+	}
+
+	bool near_to(coord_base_t that) const {
+		return distance_to(that) <= 1;
+	}
+
+	constexpr Derived in_direction(direction_t direction) const {
+		switch (direction) {
+			case direction_t::top:
+				return Derived(xx, yy - 1);
+			case direction_t::top_right:
+				return Derived(xx + 1, yy - 1);
+			case direction_t::right:
+				return Derived(xx + 1, yy);
+			case direction_t::bottom_right:
+				return Derived(xx + 1, yy + 1);
+			case direction_t::bottom:
+				return Derived(xx, yy + 1);
+			case direction_t::bottom_left:
+				return Derived(xx - 1, yy + 1);
+			case direction_t::left:
+				return Derived(xx - 1, yy);
+			case direction_t::top_left:
+				return Derived(xx - 1, yy - 1);
+			default:
+				throw std::logic_error("Invalid direction");
+		}
+	}
+};
+
+// This is replacement for `roomName` in the JS API.
+// "E0S0" -> { xx: 128, yy: 128 }
+struct room_location_t : coord_base_t<room_location_t, uint8_t, uint16_t> {
+	using coord_base_t<room_location_t, uint8_t, uint16_t>::coord_base_t;
+	room_location_t() = default;
+	constexpr room_location_t(const room_location_t&) = default;
+
+	const class terrain_t& terrain() const;
+	friend std::ostream& operator<<(std::ostream& os, room_location_t that);
 
 	struct circle_t {
 		double radius = 0.15;
@@ -161,73 +214,14 @@ struct room_location_t {
 	void draw_text(double xx, double yy, const std::string& string) const;
 };
 
-// Hash specialization for room_location_t
-template <> struct std::hash<room_location_t> {
-	size_t operator()(const room_location_t& val) const {
-		return std::hash<uint16_t>()(val.id);
-	}
-};
-
 // Simple container for a location in an arbitrary room
-struct local_position_t {
-	union {
-		uint16_t _id;
-		struct {
-			int8_t xx;
-			int8_t yy;
-		};
-	};
-
+struct local_position_t : coord_base_t<local_position_t, int8_t, uint16_t> {
+	using coord_base_t<local_position_t, int8_t, uint16_t>::coord_base_t;
 	local_position_t() = default;
+	constexpr local_position_t(const local_position_t&) = default;
 
-	constexpr local_position_t(int8_t xx, int8_t yy) : xx(xx), yy(yy) {
-		if (xx < 0 || xx > 49 || yy < 0 || yy > 49) {
-			throw std::logic_error("Invalid local_position_t");
-		}
-	}
-
-	friend std::ostream& operator<< (std::ostream& os, const local_position_t& that);
-
-	constexpr bool operator==(const local_position_t& rhs) const {
-		return _id == rhs._id;
-	}
-
-	constexpr bool operator!=(const local_position_t& rhs) const {
-		return _id != rhs._id;
-	}
-
-	uint8_t distance_to(local_position_t that) const {
-		return std::max(std::abs(xx - that.xx), std::abs(yy - that.yy));
-	}
-
-	bool near_to(local_position_t that) const {
-		return distance_to(that) <= 1;
-	}
-
+	friend std::ostream& operator<<(std::ostream& os, local_position_t that);
 	constexpr struct position_t in_room(room_location_t room) const;
-
-	constexpr local_position_t in_direction(direction_t direction) const {
-		switch (direction) {
-			case direction_t::top:
-				return local_position_t(xx, yy - 1);
-			case direction_t::top_right:
-				return local_position_t(xx + 1, yy - 1);
-			case direction_t::right:
-				return local_position_t(xx + 1, yy);
-			case direction_t::bottom_right:
-				return local_position_t(xx + 1, yy + 1);
-			case direction_t::bottom:
-				return local_position_t(xx, yy + 1);
-			case direction_t::bottom_left:
-				return local_position_t(xx - 1, yy + 1);
-			case direction_t::left:
-				return local_position_t(xx - 1, yy);
-			case direction_t::top_left:
-				return local_position_t(xx - 1, yy - 1);
-			default:
-				throw std::logic_error("Invalid direction");
-		}
-	}
 
 	constexpr dynamic_neighbor_iterable_t<local_position_t> neighbors() const {
 		if (xx == 0) {
@@ -476,32 +470,15 @@ struct local_position_t {
 	}
 };
 
-// Hash specialization for local_position_t
-template <> struct std::hash<local_position_t> {
-	size_t operator()(const local_position_t& val) const {
-		return std::hash<uint16_t>()(val._id);
-	}
-};
-
 // This represents a position in a continuous plane of the whole world. `roomName` is implied from
 // xx and yy.
-struct position_t {
-	using iterable = constexpr_neighbor_iteratable_t<position_t,
-		direction_t::top_left, direction_t::top, direction_t::top_right,
-		direction_t::right,
-		direction_t::bottom_right, direction_t::bottom, direction_t::bottom_left,
-		direction_t::left
-	>;
-	union {
-		uint32_t _id;
-		struct {
-			uint16_t xx, yy;
-		};
-	};
+struct position_t : coord_base_t<position_t, uint16_t, uint32_t> {
+	using coord_base = coord_base_t<position_t, uint16_t, uint32_t>;
+	using coord_base::coord_base_t;
 	position_t() = default;
-	constexpr position_t(uint16_t xx, uint16_t yy) : xx(xx), yy(yy) {}
-	constexpr position_t(room_location_t room, local_position_t pos) : xx(room.xx * 50 + pos.xx), yy(room.yy * 50 + pos.yy) {}
-	constexpr position_t(room_location_t room, uint8_t xx, uint8_t yy) : xx(room.xx * 50 + xx), yy(room.yy * 50 + yy) {}
+	constexpr position_t(const position_t&) = default;
+	constexpr position_t(room_location_t room, local_position_t pos) : coord_base(room.xx * 50 + pos.xx, room.yy * 50 + pos.yy) {}
+	constexpr position_t(room_location_t room, uint8_t xx, uint8_t yy) : coord_base(room.xx * 50 + xx, room.yy * 50 + yy) {}
 
 	constexpr room_location_t room_location() const {
 		return room_location_t(xx / 50, yy / 50);
@@ -511,53 +488,22 @@ struct position_t {
 		return local_position_t(xx % 50, yy % 50);
 	}
 
-	friend std::ostream& operator<< (std::ostream& os, const position_t& that);
+	friend std::ostream& operator<<(std::ostream& os, position_t that);
 
-	constexpr bool operator==(const position_t& rhs) const {
-		return _id == rhs._id;
-	}
-
-	constexpr bool operator!=(const position_t& rhs) const {
-		return _id != rhs._id;
-	}
-
-	uint32_t distance_to(position_t that) const {
-		return std::max(std::abs(xx - that.xx), std::abs(yy - that.yy));
-	}
-
-	constexpr position_t in_direction(direction_t direction) const {
-		switch (direction) {
-			case direction_t::top:
-				return position_t(xx, yy - 1);
-			case direction_t::top_right:
-				return position_t(xx + 1, yy - 1);
-			case direction_t::right:
-				return position_t(xx + 1, yy);
-			case direction_t::bottom_right:
-				return position_t(xx + 1, yy + 1);
-			case direction_t::bottom:
-				return position_t(xx, yy + 1);
-			case direction_t::bottom_left:
-				return position_t(xx - 1, yy + 1);
-			case direction_t::left:
-				return position_t(xx - 1, yy);
-			case direction_t::top_left:
-				return position_t(xx - 1, yy - 1);
-		}
-		throw std::logic_error("Invalid direction");
-	}
-
-	constexpr iterable neighbors() const {
-		return iterable(*this);
+	using neighbors_iterable = constexpr_neighbor_iteratable_t<position_t,
+		direction_t::top_left, direction_t::top, direction_t::top_right,
+		direction_t::right,
+		direction_t::bottom_right, direction_t::bottom, direction_t::bottom_left,
+		direction_t::left
+	>;
+	constexpr neighbors_iterable neighbors() const {
+		return neighbors_iterable(*this);
 	}
 };
 
-// Hash specialization for position_t
-template <> struct std::hash<position_t> {
-	size_t operator()(const position_t& val) const {
-		return std::hash<uint32_t>()(val._id);
-	}
-};
+inline constexpr position_t local_position_t::in_room(room_location_t room) const {
+	return position_t(room, *this);
+}
 
 // Matrix of any type which holds a value for each position in a room
 template <typename Type, typename Store, size_t Pack, bool Packed = sizeof(Store) << 3 != Pack>
@@ -686,6 +632,30 @@ class local_matrix_t : public local_matrix_store_t<Type, Store, Pack> {
 		}
 };
 
-inline constexpr position_t local_position_t::in_room(room_location_t room) const {
-	return position_t(room, *this);
-}
+} // namespace screeps
+
+// Hash specialization for hashing STL containers
+/*
+template <typename Derived, typename Integral, typename IntegralUnion>
+struct std::hash<screeps::coord_base_t<Derived, Integral, IntegralUnion>> {
+	auto operator()(screeps::coord_base_t<Derived, Integral, IntegralUnion> val) const {
+		return std::hash<IntegralUnion>()(val.id);
+	}
+};
+*/
+template <> struct std::hash<screeps::room_location_t> {
+	auto operator()(screeps::room_location_t val) const {
+		return std::hash<decltype(screeps::room_location_t().id)>()(val.id);
+	}
+};
+template <> struct std::hash<screeps::local_position_t> {
+	auto operator()(screeps::local_position_t val) const {
+		return std::hash<decltype(screeps::local_position_t().id)>()(val.id);
+	}
+};
+template <> struct std::hash<screeps::position_t> {
+	auto operator()(screeps::position_t val) const {
+		return std::hash<decltype(screeps::position_t().id)>()(val.id);
+	}
+};
+

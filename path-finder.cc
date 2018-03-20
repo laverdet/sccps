@@ -1,7 +1,7 @@
 #include "./path-finder.h"
 #include <emscripten.h>
 
-const cost_matrix_t cost_matrix_t::cost_matrix0{};
+namespace screeps {
 
 path_finder_t::result_t path_finder_t::search(const position_t origin, const std::vector<goal_t>& goals, const options_t& options) {
 	result_t result;
@@ -12,7 +12,7 @@ path_finder_t::result_t path_finder_t::search(const position_t origin, const std
 			var tmp = Object.create(PathFinder.CostMatrix.prototype);
 			roomCallback = function(roomName) {
 				var room = Module.screeps.position.parseRoomName(roomName);
-				var ptr = Module.__ZN13path_finder_t19callback_trampolineEPvii($10, room.rx, room.ry);
+				var ptr = Module.__ZN7screeps13path_finder_t19callback_trampolineEPvii($10, room.rx, room.ry);
 				if (ptr === 0) {
 					return false;
 				} else {
@@ -60,3 +60,5 @@ const void* path_finder_t::callback_trampoline(void* fn, int xx, int yy) {
 	options_t& options = *reinterpret_cast<options_t*>(fn);
 	return reinterpret_cast<const void*>(options.room_callback(room_location_t(xx, yy)));
 }
+
+} // namespace screeps

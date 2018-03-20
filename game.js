@@ -11,14 +11,21 @@ module.exports = {
 		let creepsBegin = creepsPtr + 4;
 		let sourcesBegin = sourcesPtr + 4;
 		let structuresBegin = structuresPtr + 4;
+		let creepsCount = 0, sourcesCount = 0, structuresCount = 0;
 		for (let ii = rooms.length - 1; ii >= 0; --ii) {
 			// Get initial array state
 			let room = Game.rooms[rooms[ii]];
 
 			// Push room to arrays
-			let creepsEnd = CreepLib.writeToArray(env, creepsPtr, room.find(FIND_CREEPS));
-			let sourcesEnd = RoomLib.writeSourcesToArray(env, sourcesPtr, room.find(FIND_SOURCES));
-			let structuresEnd = StructureLib.writeToArray(env, structuresPtr, room.find(FIND_STRUCTURES));
+			let creeps = room.find(FIND_CREEPS);
+			let creepsEnd = CreepLib.writeToArray(env, creepsPtr, creeps);
+			creepsCount += creeps.length;
+			let sources = room.find(FIND_SOURCES);
+			let sourcesEnd = RoomLib.writeSourcesToArray(env, sourcesPtr, sources);
+			sourcesCount += sources.length;
+			let structures = room.find(FIND_STRUCTURES);
+			let structuresEnd = StructureLib.writeToArray(env, structuresPtr, structures);
+			structuresCount += structures.length;
 			let minerals = room.find(FIND_MINERALS);
 			if (minerals.length === 1) {
 				RoomLib.writeMineral(env, mineralPtr, minerals[0]);
@@ -48,8 +55,12 @@ module.exports = {
 		}
 
 		// Flush room structures
+		env.__ZN7screeps12game_state_t13reserve_roomsEPS0_j(gamePtr, flushes.length);
 		for (let ii = flushes.length - 1; ii >= 0; --ii) {
-			env.__ZN12game_state_t10flush_roomEPS_jjjjPvS1_S1_S1_S1_S1_S1_S1_S1_S1_.apply(env, flushes[ii]);
+			env.__ZN7screeps12game_state_t10flush_roomEPS0_jjjjPvS2_S2_S2_S2_S2_S2_S2_S2_S2_.apply(env, flushes[ii]);
 		}
+
+		// Flush game
+		env.__ZN7screeps12game_state_t10flush_gameEPS0_jjjjj(gamePtr, creepsCount, 0, sourcesCount, structuresCount, 0);
 	},
 };

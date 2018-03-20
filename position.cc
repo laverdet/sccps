@@ -1,6 +1,9 @@
+#include "./constants.h"
 #include "./position.h"
 #include "./terrain.h"
 #include <emscripten.h>
+
+namespace screeps {
 
 const terrain_t& room_location_t::terrain() const {
 	static terrain_t* terrain_map[room_location_t::max]{nullptr};
@@ -10,7 +13,7 @@ const terrain_t& room_location_t::terrain() const {
 	return *terrain_map[id];
 }
 
-std::ostream& operator<< (std::ostream& os, const room_location_t& that) {
+std::ostream& operator<<(std::ostream& os, room_location_t that) {
 	if (that.xx == 0 && that.yy == 0) {
 		os <<"sim";
 	} else {
@@ -45,11 +48,14 @@ void room_location_t::draw_text(double xx, double yy, const std::string& string)
 	}, this->xx, this->yy, string.c_str(), string.length(), xx, yy);
 }
 
-std::ostream& operator<< (std::ostream& os, const local_position_t& that) {
+std::ostream& operator<<(std::ostream& os, local_position_t that) {
 	os <<"local_position_t[" <<(int)(that.xx % 50) <<", " <<(int)(that.yy % 50) <<"]";
 	return os;
 }
-std::ostream& operator<< (std::ostream& os, const position_t& that) {
+
+std::ostream& operator<<(std::ostream& os, position_t that) {
 	os <<"position_t[" <<that.room_location() <<", " <<that.xx % 50 <<", " <<that.yy % 50 <<"]";
 	return os;
 }
+
+} // namespace screeps

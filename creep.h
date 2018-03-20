@@ -6,6 +6,8 @@
 #include "./resource.h"
 #include <vector>
 
+namespace screeps {
+
 enum struct bodypart_t {
 	attack,
 	carry,
@@ -59,3 +61,5 @@ struct creep_t : game_object_t {
 
 	static void init();
 };
+
+} // namespace screeps

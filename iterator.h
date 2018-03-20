@@ -2,6 +2,8 @@
 #include <iterator>
 #include <type_traits>
 
+namespace screeps {
+
 template <typename T>
 class forward_iterator_t {
 	private:
@@ -193,3 +195,5 @@ class pointer_container_t {
 			return _end;
 		}
 };
+
+} // namespace screeps

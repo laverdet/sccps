@@ -33,7 +33,7 @@ module.exports.loop = function() {
 	});
 
 	try {
-		mod.init();
+		mod.__ZN7screeps12game_state_t4initEv();
 	} catch (err) {
 		error('Uncaught error in init()', err.stack || err.message || err);
 		throw err;

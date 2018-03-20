@@ -1,6 +1,7 @@
-#include "./creep.h"
 #include "./structure.h"
 #include <emscripten.h>
+
+namespace screeps {
 
 void structure_t::init() {
 	EM_ASM({
@@ -39,3 +40,5 @@ int spawn_t::spawn_creep(const creep_body_t& body, const std::string& name) cons
 		);
 	}, &this->id, &body, name.c_str(), name.length());
 }
+
+} // namespace screeps

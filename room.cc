@@ -1,6 +1,8 @@
 #include "./room.h"
 #include <emscripten.h>
 
+namespace screeps {
+
 void room_t::init() {
 	EM_ASM({
 		Module.screeps.room.init({
@@ -58,3 +60,5 @@ void room_t::init() {
 		offsetof(tombstone_t, ticks_to_decay)
 	);
 }
+
+} // namespace screeps

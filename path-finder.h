@@ -5,10 +5,9 @@
 #include <memory>
 #include <vector>
 
-struct cost_matrix_t : public local_matrix_t<uint8_t> {
-	using local_matrix_t<uint8_t>::local_matrix_t;
-	static const cost_matrix_t cost_matrix0;
-};
+namespace screeps {
+
+using cost_matrix_t = local_matrix_t<uint8_t>;
 
 struct path_finder_t {
 	using path_t = array_t<position_t, kMaximumPathLength>;
@@ -42,3 +41,5 @@ struct path_finder_t {
 	static result_t search(const position_t origin, const goals_t& goals, const options_t& options);
 	static const void* callback_trampoline(void* fn, int xx, int yy);
 };
+
+} // namespace screeps

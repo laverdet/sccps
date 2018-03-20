@@ -2,7 +2,8 @@
 #include <cstdint>
 #include "./position.h"
 
-// TODO: local_matrix_t
+namespace screeps {
+
 class terrain_t : public local_matrix_t<uint8_t, uint8_t, 2> {
 	public:
 		static constexpr uint8_t plain = 0;
@@ -11,3 +12,5 @@ class terrain_t : public local_matrix_t<uint8_t, uint8_t, 2> {
 		terrain_t() = default;
 		terrain_t(room_location_t room);
 };
+
+} // namespace screeps

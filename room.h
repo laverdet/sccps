@@ -1,10 +1,11 @@
 #pragma once
 #include "./constants.h"
-#include "./iterator.h"
 #include "./object.h"
 #include "./position.h"
 #include "./resource.h"
 #include "./structure.h"
+
+namespace screeps {
 
 enum class color_t {
 	blue,
@@ -104,3 +105,5 @@ class room_t {
 
 		static void init();
 };
+
+} // namespace screeps
