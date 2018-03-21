@@ -1,6 +1,6 @@
 'use strict';
-function error(line) {
-	console.log(`<span style="color:#e79da7">${line}</span>`);
+function error(...lines) {
+	console.log(lines.map(line => `<span style="color:#e79da7">${line}</span>`));
 }
 module.exports.loop = function() {
 	if (Game.cpu.limit + Game.cpu.bucket === Game.cpu.tickLimit) {
@@ -43,7 +43,25 @@ module.exports.loop = function() {
 		try {
 			mod.loop();
 		} catch (err) {
-			console.error('Uncaught error', err.stack || err.message || err);
+			if (typeof err === 'number') {
+				let info = mod.lastException;
+				let stack = info.stack;
+				let err_info = mod.__ZN7screeps14exception_whatEPv(info.ptr);
+				let [ name, what ] = [ mod.HEAPU32[err_info >> 2], mod.HEAPU32[(err_info + 4) >> 2] ].map(function(ptr) {
+					let str = '';
+					while (true) {
+						let ch = mod.HEAP8[ptr++];
+						if (!ch) {
+							return str;
+						}
+						str += String.fromCharCode(ch);
+					}
+				});
+				console.error(`${name}: ${what}\n${stack.split(/\n/g).slice(2).join('\n')}`);
+				mod._free(info.ptr);
+			} else {
+				console.error('Uncaught error', err.stack || err.message || err);
+			}
 			throw err;
 		}
 	}

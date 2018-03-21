@@ -98,4 +98,19 @@ void game_state_t::reserve_rooms(game_state_t* game, uint32_t rooms_count) {
 	game->rooms.reserve(rooms_count);
 }
 
+// Called in the case of an uncaught exception. This does the `what()` virtual function call and
+// also returns RTTI.
+EMSCRIPTEN_KEEPALIVE
+void* exception_what(void* ptr) {
+	struct hole_t {
+		const char* name;
+		const char* what;
+	};
+	static hole_t hole;
+	auto& err = *reinterpret_cast<const std::exception*>(ptr);
+	hole.name = typeid(err).name();
+	hole.what = err.what();
+	return reinterpret_cast<void*>(&hole);
+}
+
 } // namespace screeps

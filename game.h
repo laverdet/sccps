@@ -58,4 +58,6 @@ class game_state_t {
 		void load();
 };
 
+void* exception_what(void* ptr);
+
 } // namespace screeps
