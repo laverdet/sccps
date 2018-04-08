@@ -43,6 +43,7 @@ class game_state_t {
 	public:
 		std::unordered_map<room_location_t, room_t> rooms;
 		std::unordered_map<id_t, creep_t*> creeps_by_id;
+		std::unordered_map<creep_t::name_t, creep_t*> creeps_by_name;
 		std::unordered_map<id_t, dropped_resource_t*> dropped_resources_by_id;
 		std::unordered_map<id_t, source_t*> sources_by_id;
 		std::unordered_map<id_t, structure_union_t*> structures_by_id;
@@ -56,6 +57,16 @@ class game_state_t {
 		array_t<tombstone_t, 100> tombstones;
 
 		void load();
+		creep_t* creep_by_name(const creep_t::name_t& name);
+		const creep_t* creep_by_name(const creep_t::name_t& name) const;
+		dropped_resource_t* dropped_resource_by_id(const id_t& id);
+		const dropped_resource_t* dropped_resource_by_id(const id_t& id) const;
+		source_t* source_by_id(const id_t& id);
+		const source_t* source_by_id(const id_t& id) const;
+		structure_union_t* structure_by_id(const id_t& id);
+		const structure_union_t* structure_by_id(const id_t& id) const;
+
+		uint32_t load_count = 0;
 };
 
 void* exception_what(void* ptr);

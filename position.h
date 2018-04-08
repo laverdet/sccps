@@ -160,6 +160,14 @@ struct coord_base_t {
 		return id != rhs.id;
 	}
 
+	constexpr bool operator<(coord_base_t rhs) const {
+		return id < rhs.id;
+	}
+
+	constexpr bool operator>(coord_base_t rhs) const {
+		return id > rhs.id;
+	}
+
 	uint8_t distance_to(coord_base_t that) const {
 		return std::max(std::abs(xx - that.xx), std::abs(yy - that.yy));
 	}
@@ -190,6 +198,34 @@ struct coord_base_t {
 				throw std::logic_error("Invalid direction");
 		}
 	}
+
+	constexpr direction_t direction_to(coord_base_t that) const {
+		if (xx == that.xx) {
+			if (yy == that.yy) {
+				throw std::logic_error("`direction_to` same position");
+			} else if (yy < that.yy) {
+				return direction_t::bottom;
+			} else {
+				return direction_t::top;
+			}
+		} else if (yy == that.yy) {
+			if (xx < that.xx) {
+				return direction_t::right;
+			} else {
+				return direction_t::left;
+			}
+		} else if (xx < that.xx) {
+			if (yy < that.yy) {
+				return direction_t::bottom_right;
+			} else {
+				return direction_t::top_right;
+			}
+		} else if (yy < that.yy) {
+			return direction_t::bottom_left;
+		} else {
+			return direction_t::top_left;
+		}
+	}
 };
 
 // This is replacement for `roomName` in the JS API.
@@ -206,12 +242,22 @@ struct room_location_t : coord_base_t<room_location_t, uint8_t, uint16_t> {
 		double radius = 0.15;
 		uint32_t fill = 0xffffff;
 		double opacity = 0.5;
-		uint32_t stroke = 0xff000000;
+		int32_t stroke = -1;
 		double stroke_width = 0.1;
 		// line_style
 	};
 	void draw_circle(double xx, double yy, const circle_t& options) const;
-	void draw_text(double xx, double yy, const std::string& string) const;
+	struct text_t {
+		uint32_t color = 0xffffff;
+		std::string font = "";
+		uint32_t stroke = -1;
+		double stroke_width = 0.15;
+		int32_t background_color = -1;
+		double background_padding = 0.3;
+		std::string align = "center";
+		double opacity = 1;
+	};
+	void draw_text(double xx, double yy, const std::string& text, const text_t& options) const;
 };
 
 // Simple container for a location in an arbitrary room
@@ -519,6 +565,10 @@ class local_matrix_store_t<Type, Store, Pack, false> {
 	public:
 		local_matrix_store_t() = default;
 		constexpr local_matrix_store_t(Type value) {
+			fill(value);
+		}
+
+		constexpr void fill(Type value) {
 			std::fill(costs.begin(), costs.end(), value);
 		}
 
@@ -573,6 +623,10 @@ class local_matrix_store_t<Type, Store, Pack, true> {
 	public:
 		local_matrix_store_t() = default;
 		constexpr local_matrix_store_t(Type value) {
+			fill(value);
+		}
+
+		constexpr void fill(Type value) {
 			Store packed{};
 			for (int ii = 0; ii < StoreBits; ii += Pack) {
 				packed <<= Pack;

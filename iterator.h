@@ -29,7 +29,7 @@ class forward_iterator_t {
 		constexpr T& operator++() = 0;
 		*/
 
-		constexpr bool operator!=(const T& rhs) {
+		constexpr bool operator!=(const T& rhs) const {
 			return !(that() == rhs);
 		}
 

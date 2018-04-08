@@ -41,7 +41,15 @@ int creep_t::suicide() const {
 	}, &this->id);
 }
 
-// int creep_t::transfer(const game_object_t& target, resource_t resource, int amount = -1) const;
+int creep_t::transfer(const game_object_t& target, resource_t resource, int amount) const {
+	return EM_ASM_INT({
+		return Module.screeps.util.getObjectById(Module, $0).transfer(
+			Module.screeps.util.getObjectById(Module, $1),
+			Module.screeps.resource.cToJs($2),
+			$3 === -1 ? undefined : $3
+		);
+	}, &this->id, &target.id, resource, amount);
+}
 
 int creep_t::upgrade_controller(const game_object_t& target) const {
 	return EM_ASM_INT({
@@ -78,8 +86,9 @@ void creep_t::init() {
 			'hits': $5,
 			'hitsMax': $6,
 			'my': $7,
-			'spawning': $8,
-			'ticksToLive': $9,
+			'name': $8,
+			'spawning': $9,
+			'ticksToLive': $10,
 		});
 	},
 		sizeof(creep_t),
@@ -90,6 +99,7 @@ void creep_t::init() {
 		offsetof(creep_t, hits),
 		offsetof(creep_t, hits_max),
 		offsetof(creep_t, my),
+		offsetof(creep_t, name),
 		offsetof(creep_t, spawning),
 		offsetof(creep_t, ticksToLive)
 	);

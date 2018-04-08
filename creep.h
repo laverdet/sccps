@@ -34,6 +34,8 @@ struct creep_active_bodypart_t {
 };
 
 struct creep_t : game_object_t {
+	using name_t = string_t<20>;
+
 	array_t<creep_bodypart_t, kMaxCreepSize> body;
 	resource_store_t carry;
 	uint32_t carry_capacity;
@@ -41,6 +43,7 @@ struct creep_t : game_object_t {
 	uint32_t hits;
 	uint32_t hits_max;
 	bool my;
+	name_t name;
 	// owner
 	// saying
 	bool spawning;

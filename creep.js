@@ -2,17 +2,18 @@
 const ArrayLib = require('array');
 const ObjectLib = require('object');
 const ResourceLib = require('resource');
+const StringLib = require('string');
 const util = require('util');
 
-const [ bodyPartEnum ] = util.enumToMap([
-  ATTACK,
-  CARRY,
-  CLAIM,
-  HEAL,
-  MOVE,
-  RANGED_ATTACK,
-  TOUGH,
-  WORK,
+const [ bodyPartEnumReverse, bodyPartEnum ] = util.enumToMap([
+	ATTACK,
+	CARRY,
+	CLAIM,
+	HEAL,
+	MOVE,
+	RANGED_ATTACK,
+	TOUGH,
+	WORK,
 ]);
 
 let sizeof;
@@ -38,6 +39,11 @@ const that = module.exports = {
 		env.HEAPU32[(ptr + creepLayout.hits) >> 2] = creep.hits;
 		env.HEAPU32[(ptr + creepLayout.hitsMax) >> 2] = creep.hitsMax;
 		env.HEAP8[(ptr + creepLayout.my) >> 0] = creep.my ? 1 : 0;
+		if (creep.my) {
+			StringLib.writeOneByteString(env, ptr + creepLayout.name, creep.name);
+		} else {
+			env.HEAPU32[(ptr + creepLayout.name) >> 2] = 0;
+		}
 		env.HEAP8[(ptr + creepLayout.spawning) >> 0] = creep.spawning ? 1 : 0;
 		env.HEAPU32[(ptr + creepLayout.ticksToLive) >> 2] = creep.ticksToLive;
 	},

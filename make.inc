@@ -7,15 +7,20 @@ SCREEPS_RUNTIME = array.js creep.js game.js main.js object.js position.js resour
 BYTE_CODE_OBJS = $(addprefix build/$(TARGET)/$(SCREEPS_PATH)/,$(SCREEPS_OBJS)) $(addprefix build/$(TARGET)/,$(OBJS))
 
 # Default compiler flags
-CXXFLAGS += -std=c++1z --bind -Wall -Wno-invalid-offsetof
+CXXFLAGS += \
+	-std=c++1z \
+	-Wall -Wextra -Wno-invalid-offsetof \
+	-I.
 EMFLAGS += \
 	-s STRICT=1 -s MODULARIZE=1 -s NO_FILESYSTEM=1 -s BINARYEN_ASYNC_COMPILATION=0 \
 	-s DISABLE_EXCEPTION_CATCHING=0 \
+	-s EXPORTED_FUNCTIONS="['__Z4loopv']" \
 	-s ALLOW_MEMORY_GROWTH=0 -s TOTAL_MEMORY=201326592
 
 # Additional flags for debug or release
 ifeq ($(TARGET), debug)
-CXXFLAGS += -g4 -O2
+CXXFLAGS += -g4 -O2 -ftrapv
+EMFLAGS += -s ASSERTIONS=1
 else
 ifeq ($(TARGET), release)
 CXXFLAGS += -O3

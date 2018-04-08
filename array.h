@@ -27,6 +27,17 @@ struct array_t {
 	public:
 		array_t() = default;
 
+		/*
+		array_t(const array_t& that) : size_(that.size_) {
+			std::copy(that.begin(), that.end(), begin());
+		}
+
+		array_t& operator=(const array_t& that) {
+			size_ = that.size_;
+			std::copy(that.begin(), that.end(), begin());
+		}
+		*/
+
 		array_t(size_type size, const_pointer data) : size_(size) {
 			std::copy_n(data, size, store.begin());
 		}

@@ -11,6 +11,7 @@ namespace screeps {
 template <int Capacity>
 struct string_t : array_t<char, Capacity> {
 	string_t() = default;
+	string_t(const std::string& string) : array_t<char, Capacity>(string.size(), string.c_str()) {}
 	string_t(const char* data) : array_t<char, Capacity>(strlen(data), data) {}
 	string_t(screeps::memory_t& memory) {
 		size_t size;

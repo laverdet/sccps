@@ -67,9 +67,9 @@ struct resource_store_t {
 
 				reference operator*() const {
 					if (store.extended) {
-						return reference(type, (*store.extended)[(int)type]);
+						return reference(type, const_cast<value_type&>((*store.extended)[(int)type]));
 					} else {
-						return reference(type, store.single_amount);
+						return reference(type, const_cast<value_type&>(store.single_amount));
 					}
 				}
 
@@ -91,7 +91,7 @@ struct resource_store_t {
 				}
 
 				bool operator!=(const iterator_base& rhs) const {
-					return type != rhs.val.type;
+					return type != rhs.type;
 				}
 		};
 

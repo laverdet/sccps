@@ -13,14 +13,18 @@ void game_state_t::load() {
 
 	rooms.clear();
 	creeps_by_id.clear();
+	creeps_by_name.clear();
 	dropped_resources_by_id.clear();
 	sources_by_id.clear();
 	structures_by_id.clear();
 	tombstones_by_id.clear();
 
 	creeps.clear();
+	dropped_resources.clear();
 	sources.clear();
 	structures.clear();
+
+	++load_count;
 
 	EM_ASM({
 		Module.screeps.game.write(Module, $0, $1, $2, $3, $4, $5, $6, $7);
@@ -36,8 +40,73 @@ void game_state_t::load() {
 	);
 }
 
+creep_t* game_state_t::creep_by_name(const creep_t::name_t& name) {
+	return const_cast<creep_t*>(const_cast<const game_state_t*>(this)->creep_by_name(name));
+}
+
+const creep_t* game_state_t::creep_by_name(const creep_t::name_t& name) const {
+	auto ii = creeps_by_name.find(name);
+	if (ii == creeps_by_name.end()) {
+		return nullptr;
+	} else {
+		return ii->second;
+	}
+}
+
+dropped_resource_t* game_state_t::dropped_resource_by_id(const id_t& id) {
+	return const_cast<dropped_resource_t*>(const_cast<const game_state_t*>(this)->dropped_resource_by_id(id));
+}
+
+const dropped_resource_t* game_state_t::dropped_resource_by_id(const id_t& id) const {
+	auto ii = dropped_resources_by_id.find(id);
+	if (ii == dropped_resources_by_id.end()) {
+		return nullptr;
+	} else {
+		return ii->second;
+	}
+}
+
+source_t* game_state_t::source_by_id(const id_t& id) {
+	return const_cast<source_t*>(const_cast<const game_state_t*>(this)->source_by_id(id));
+}
+
+const source_t* game_state_t::source_by_id(const id_t& id) const {
+	auto ii = sources_by_id.find(id);
+	if (ii == sources_by_id.end()) {
+		return nullptr;
+	} else {
+		return ii->second;
+	}
+}
+
+structure_union_t* game_state_t::structure_by_id(const id_t& id) {
+	return const_cast<structure_union_t*>(const_cast<const game_state_t*>(this)->structure_by_id(id));
+}
+
+const structure_union_t* game_state_t::structure_by_id(const id_t& id) const {
+	auto ii = structures_by_id.find(id);
+	if (ii == structures_by_id.end()) {
+		return nullptr;
+	} else {
+		return ii->second;
+	}
+}
+
 EMSCRIPTEN_KEEPALIVE
 void game_state_t::init() {
+	EM_ASM({
+		Module.screeps.object.init({
+			'droppedResource': {
+				'sizeof': $0,
+				'amount': $1,
+				'resourceType': $2,
+			},
+		});
+	},
+		sizeof(dropped_resource_t),
+		offsetof(dropped_resource_t, amount),
+		offsetof(dropped_resource_t, type)
+	);
 	creep_t::init();
 	resource_store_t::init();
 	room_t::init();
@@ -62,6 +131,15 @@ void game_state_t::flush_game(
 		for (auto& creep : room.second.creeps) {
 			game->creeps_by_id.emplace(creep.id, &creep);
 		}
+		for (auto& dropped_resource : room.second.dropped_resources) {
+			game->dropped_resources_by_id.emplace(dropped_resource.id, &dropped_resource);
+		}
+		for (auto& source : room.second.sources) {
+			game->sources_by_id.emplace(source.id, &source);
+		}
+		for (auto& structure : room.second.structures) {
+			game->structures_by_id.emplace(structure.id, &structure);
+		}
 	}
 }
 
@@ -77,7 +155,7 @@ void game_state_t::flush_room(
 	void* tombstones_begin, void* tombstones_end
 ) {
 	room_location_t room(rx, ry);
-	game->rooms.emplace(
+	auto& room_ref = *game->rooms.emplace(
 		std::piecewise_construct,
 		std::forward_as_tuple(room),
 		std::forward_as_tuple(
@@ -90,7 +168,10 @@ void game_state_t::flush_room(
 			reinterpret_cast<structure_union_t*>(structure_begin), reinterpret_cast<structure_union_t*>(structure_end),
 			reinterpret_cast<tombstone_t*>(tombstones_begin), reinterpret_cast<tombstone_t*>(tombstones_end)
 		)
-	);
+	).first;
+	for (auto& creep : room_ref.second.creeps) {
+		game->creeps_by_name.emplace(creep.name, &creep);
+	}
 }
 
 EMSCRIPTEN_KEEPALIVE
@@ -114,3 +195,6 @@ void* exception_what(void* ptr) {
 }
 
 } // namespace screeps
+
+// Keep loop function alive
+//EMSCRIPTEN_KEEPALIVE void loop();

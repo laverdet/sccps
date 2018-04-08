@@ -2,7 +2,7 @@
 const ArrayLib = require('array');
 const util = require('util');
 
-const [ resourceEnum ] = util.enumToMap([
+const [ resourceEnum, resourceReverseEnum ] = util.enumToMap([
 	null,
 	RESOURCE_ENERGY,
 	RESOURCE_POWER,
@@ -85,4 +85,12 @@ module.exports = {
 			}
 		}
 	},
+
+	jsToC(resourceType) {
+		return resourceEnum.get(resourceType);
+	},
+
+	cToJs(resourceType) {
+		return resourceReverseEnum.get(resourceType);
+	}
 };

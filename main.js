@@ -14,6 +14,7 @@ module.exports.loop = function() {
 		array: require('array'),
 		creep: require('creep'),
 		game: require('game'),
+		object: require('object'),
 		position: require('position'),
 		resource: require('resource'),
 		room: require('room'),
@@ -40,8 +41,12 @@ module.exports.loop = function() {
 	}
 	module.exports.loop = function() {
 		console.error = error; // Must be done every tick :(
+		if (Game.cpu.limit + Game.cpu.bucket === Game.cpu.tickLimit) {
+			error('Skipping loop due to empty bucket.');
+			return;
+		}
 		try {
-			mod.loop();
+			mod.__Z4loopv();
 		} catch (err) {
 			if (typeof err === 'number') {
 				let info = mod.lastException;
