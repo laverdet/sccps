@@ -1,4 +1,4 @@
-#include "./terrain.h"
+#include <screeps/terrain.h>
 #include <emscripten.h>
 
 namespace screeps {

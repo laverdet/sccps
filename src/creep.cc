@@ -1,4 +1,4 @@
-#include "./creep.h"
+#include <screeps/creep.h>
 #include <emscripten.h>
 
 namespace screeps {

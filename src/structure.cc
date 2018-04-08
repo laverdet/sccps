@@ -1,4 +1,4 @@
-#include "./structure.h"
+#include <screeps/structure.h>
 #include <emscripten.h>
 
 namespace screeps {

@@ -1,4 +1,4 @@
-#include "./path-finder.h"
+#include <screeps/path-finder.h>
 #include <emscripten.h>
 
 namespace screeps {

@@ -1,4 +1,4 @@
-#include "./room.h"
+#include <screeps/room.h>
 #include <emscripten.h>
 
 namespace screeps {
