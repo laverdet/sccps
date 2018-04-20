@@ -1,7 +1,86 @@
 'use strict';
-function error(...lines) {
-	console.log(lines.map(line => `<span style="color:#e79da7">${line}</span>`));
-}
+let { flush, print } = function() {
+	const kMaxLinesPerTick = 90;
+	const kShowOmittedLines = 10;
+	let lineCount, skippedCount;
+	let lastLine, lastStream;
+	let lineRepeat;
+	let skipTick;
+	let omittedLines;
+
+	function printLine(stream, line) {
+		if (stream === 0) {
+			console.log(line);
+		} else if (stream === 2) {
+			console.log(`<span style="color:#e79da7">${line}</span>`);
+		} else {
+			throw new Error(`Unknown output stream ${stream}`);
+		}
+	}
+
+	function notifyRepeat(count, lastTick) {
+		console.log(`<span style="color:#ffc66d">[Line repeated <b>${count}</b> time${count > 1 ? 's' : ''}${lastTick ? ' on previous tick' : ''}]</span>`);
+	}
+
+	return {
+		print(stream, line) {
+			line = `${line}`;
+			if (line === lastLine && lastStream === stream) {
+				++lineRepeat;
+				return;
+			} else if (lineRepeat > 0) {
+				if (lineRepeat === 1) {
+					printLine(stream, line);
+				} else {
+					notifyRepeat(lineRepeat, false);
+				}
+				lineRepeat = 0;
+				lastLine = undefined;
+				++lineCount;
+				return;
+			}
+			if (++lineCount > kMaxLinesPerTick) {
+				if (omittedLines === undefined) {
+					omittedLines = [ line ];
+				} else {
+					omittedLines.push({ stream, line });
+					if (omittedLines.length > kShowOmittedLines * 2) {
+						omittedLines.splice(0, kShowOmittedLines);
+					}
+				}
+				++skippedCount;
+			} else {
+				printLine(stream, line);
+			}
+			lastLine = line;
+			lastStream = stream;
+		},
+
+		flush() {
+			if (lineRepeat > 0) {
+				notifyRepeat(lineRepeat, skipTick !== Game.time);
+			} else if (skippedCount > 0) {
+				let showOmittedCount = Math.max(0, omittedLines.length - kShowOmittedLines);
+				skippedCount -= showOmittedCount;
+				if (skippedCount > 0) {
+					console.log(`<span style="color:#ffc66d">[Omitted <b>${skippedCount}</b> line${skippedCount > 1 ? 's' : ''}${Game.time !== skipTick ? ' on previous tick' : ''}]</span>`);
+				}
+				for (let ii = Math.max(0, omittedLines.length - kShowOmittedLines); ii < omittedLines.length; ++ii) {
+					printLine(omittedLines[ii].stream, omittedLines[ii].line);
+				}
+				if (Game.time !== skipTick) {
+					console.log(`<span style="color:#ffc66d">[Output from current tick follows]</span>`);
+				}
+			}
+			lineCount = 0;
+			lastLine = undefined;
+			lineRepeat = 0;
+			skippedCount = 0;
+			skipTick = Game.time
+		}
+	};
+}();
+flush();
 
 function bufferToString(buffer) {
 	const kChunkSize = 4096;
@@ -73,8 +152,8 @@ function* initialize() {
 	const mod = runtime({
 		ENVIRONMENT: 'SHELL',
 		wasmBinary: wasm,
-		print: line => console.log(line),
-		printErr: line => console.log(`<span style="color:#e79da7">${line}</span>`),
+		print: line => print(0, line),
+		printErr: line => print(2, line),
 		noInitialRun: true,
 		noExitRuntime: true,
 		screeps: screeps,
@@ -85,9 +164,10 @@ function* initialize() {
 	try {
 		mod.__ZN7screeps12game_state_t4initEv();
 	} catch (err) {
-		error('Uncaught error in init()', err.stack || err.message || err);
+		print(2, `Uncaught error in init():\n${err.stack || err.message || err}`);
 		throw err;
 	}
+	let demangleHole = mod._malloc(256 + 4 + 1);
 
 	// Setup exception handler
 	new function() {
@@ -102,8 +182,7 @@ function* initialize() {
 			}
 		}
 
-		function makeCString(string) {
-			let ptr = mod._malloc(string.length + 1);
+		function makeCString(string, ptr) {
 			for (let ii = 0; ii < string.length; ++ii) {
 				mod.HEAP8[ptr + ii] = string.charCodeAt(ii);
 			}
@@ -117,8 +196,12 @@ function* initialize() {
 			}
 			let cName, status, ret;
 			try {
-				cName = makeCString(name.substr(1));
-				status = mod._malloc(4);
+				if (name.length > 256) {
+					return name;
+				}
+				cName = makeCString(name.substr(1), demangleHole + 4);
+				status = demangleHole;
+				mod._malloc(4);
 				ret = mod.___cxa_demangle(cName, 0, 0, status);
 				if (mod.HEAP32[status >> 2] === 0 && ret) {
 					return readCString(ret).replace(/std::__2::/g, 'std::');
@@ -128,9 +211,9 @@ function* initialize() {
 			} catch (err) {
 				return name;
 			} finally {
-				cName && mod._free(cName);
-				status && mod._free(status);
-				ret && mod._free(ret);
+				try {
+					ret && mod._free(ret);
+				} catch (err) {}
 			}
 		}
 
@@ -193,7 +276,7 @@ function* initialize() {
 					break;
 				}
 			}
-			return `${message}\n${stack.filter(frame => !/^(?:dynCall_|invoke_)[dfiv]+$|^___cxa_throw/.test(frame.getFunctionName())).map(function(frame) {
+			return `${message}\n${stack.filter(frame => !/^(?:dynCall_|invoke_|_emscripten_asm_const_)[dfiv]+$|^___cxa_throw/.test(frame.getFunctionName())).map(function(frame) {
 				return `    at ${renderer(frame)}\n`;
 			}).join('')}`;
 		}
@@ -207,12 +290,13 @@ function* initialize() {
 	runtime = undefined;
 	gc();
 	yield 'gc';
-	yield `!Heap: ${Math.floor(Game.cpu.getHeapStatistics().used_heap_size / 1024 / 1024 * 100) / 100}mb`;
+	yield `!Heap: ${Game.cpu.getHeapStatistics().used_heap_size / 1024 / 1024}mb`;
 
 	// Main loop starts here
 	return function() {
+		flush();
 		if (Game.cpu.limit + Game.cpu.bucket === Game.cpu.tickLimit) {
-			error('Skipping loop due to empty bucket.');
+			print(2, 'Skipping loop due to empty bucket.');
 			return;
 		}
 		try {
@@ -231,20 +315,27 @@ function* initialize() {
 			} else {
 				throw err;
 			}
+		} finally {
+			flush();
 		}
 	};
 }
 
 // Run the initialiization over several ticks if necessary, to avoid CPU errors
 let initialization = initialize();
+let messages;
 module.exports.loop = function() {
+	flush();
 	if (Game.cpu.limit + Game.cpu.bucket === Game.cpu.tickLimit) {
-		console.log('Deferring initialization due to empty bucket.');
+		print(0, 'Deferring initialization due to empty bucket.');
 		return;
+	}
+	if (messages && messages.length !== 0) {
+		print(0, messages.join('... '));
 	}
 	let totalTime = 0;
 	let started = Date.now();
-	let messages = [];
+	messages = [];
 	let extraMessages = [];
 	try {
 		do {
@@ -269,17 +360,19 @@ module.exports.loop = function() {
 		} while (true);
 	} catch (err) {
 		if (/Generator is already running/.test(err.message)) {
-			console.log('Initialization restarted');
+			print(2, 'Initialization timed out. Restarting.');
 			initialization = initialize();
 			module.exports.loop();
 		} else {
-			error('Caught error during initialization', err.stack || err.message || err);
+			print(2, `Caught error during initialization:\n${err.stack || err.message || err}`);
 			initialization = initialize();
 		}
 	} finally {
-		if (messages.length !== 0) {
-			console.log(messages.join('... '));
+		if (messages && messages.length !== 0) {
+			print(0, messages.join('... '));
 		}
-		extraMessages.map(message => console.log(extraMessages));
+		messages = undefined;
+		extraMessages.map(message => print(0, extraMessages));
+		flush();
 	}
 };
