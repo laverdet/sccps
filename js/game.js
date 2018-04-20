@@ -6,7 +6,7 @@ const RoomLib = require('room');
 const StructureLib = require('structure');
 
 module.exports = {
-	write(env, gamePtr, creepsPtr, droppedResourcesPtr, flagsPtr, sourcesPtr, structuresPtr, tombstonesPtr, mineralPtr) {
+	write(env, gamePtr, timePtr, creepsPtr, droppedResourcesPtr, flagsPtr, sourcesPtr, structuresPtr, tombstonesPtr, mineralPtr) {
 		let rooms = Object.keys(Game.rooms);
 		let flushes = Array(rooms.length);
 		let creepsBegin = creepsPtr + 4;
@@ -67,6 +67,7 @@ module.exports = {
 		}
 
 		// Flush game
+		env.HEAPU32[timePtr >> 2] = Game.time;
 		env.__ZN7screeps12game_state_t10flush_gameEPS0_jjjjj(gamePtr, creepsCount, droppedResourcesCount, sourcesCount, structuresCount, 0);
 	},
 };

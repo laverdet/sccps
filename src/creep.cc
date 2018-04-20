@@ -1,4 +1,5 @@
 #include <screeps/creep.h>
+#include <cstring>
 #include <emscripten.h>
 
 namespace screeps {
@@ -9,7 +10,20 @@ int creep_t::build(const game_object_t& target) const {
 	}, &this->id, &target.id);
 }
 
-// int creep_t::drop(resource_t resource, int amount) const;
+int creep_t::cancel_order(const char* method) const {
+	return EM_ASM_INT({
+		return Module.screeps.util.getObjectById(Module, $0).cancelOrder(Module.screeps.string.readOneByteStringData(Module, $1, $2));
+	}, &this->id, method, strlen(method));
+}
+
+int creep_t::drop(resource_t resource, int amount) const {
+	return EM_ASM_INT({
+		return Module.screeps.util.getObjectById(Module, $0).drop(
+			Module.screeps.resource.cToJs($1),
+			$2 === -1 ? undefined : $2
+		);
+	}, &this->id, resource, amount);
+}
 
 int creep_t::harvest(const game_object_t& target) const {
 	return EM_ASM_INT({
@@ -53,7 +67,7 @@ int creep_t::transfer(const game_object_t& target, resource_t resource, int amou
 
 int creep_t::upgrade_controller(const game_object_t& target) const {
 	return EM_ASM_INT({
-		return Module.screeps.util.getObjectById(Module, $0).upgrade_controller(Module.screeps.util.getObjectById(Module, $1));
+		return Module.screeps.util.getObjectById(Module, $0).upgradeController(Module.screeps.util.getObjectById(Module, $1));
 	}, &this->id, &target.id);
 }
 
@@ -81,7 +95,7 @@ void creep_t::init() {
 			'sizeof': $0,
 			'body': $1,
 			'carry': $2,
-			'carry_capacity': $3,
+			'carryCapacity': $3,
 			'fatigue': $4,
 			'hits': $5,
 			'hitsMax': $6,

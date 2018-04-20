@@ -50,7 +50,8 @@ struct creep_t : game_object_t {
 	uint32_t ticksToLive;
 
 	int build(const game_object_t& target) const;
-	int drop(resource_t resource, int amount) const;
+	int cancel_order(const char* method) const;
+	int drop(resource_t resource, int amount = -1) const;
 	int harvest(const game_object_t& target) const;
 	int move(direction_t direction) const;
 	int pickup(const game_object_t& target) const;

@@ -24,12 +24,11 @@ void game_state_t::load() {
 	sources.clear();
 	structures.clear();
 
-	++load_count;
-
 	EM_ASM({
-		Module.screeps.game.write(Module, $0, $1, $2, $3, $4, $5, $6, $7);
+		Module.screeps.game.write(Module, $0, $1, $2, $3, $4, $5, $6, $7, $8);
 	},
 		this,
+		&this->time,
 		&creeps,
 		&dropped_resources,
 		&flags,

@@ -41,6 +41,8 @@ class game_state_t {
 		static void reserve_rooms(game_state_t* game, uint32_t rooms_count);
 
 	public:
+		uint32_t time;
+
 		std::unordered_map<room_location_t, room_t> rooms;
 		std::unordered_map<id_t, creep_t*> creeps_by_id;
 		std::unordered_map<creep_t::name_t, creep_t*> creeps_by_name;
@@ -65,8 +67,6 @@ class game_state_t {
 		const source_t* source_by_id(const id_t& id) const;
 		structure_union_t* structure_by_id(const id_t& id);
 		const structure_union_t* structure_by_id(const id_t& id) const;
-
-		uint32_t load_count = 0;
 };
 
 void* exception_what(void* ptr);
