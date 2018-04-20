@@ -196,4 +196,4 @@ void* exception_what(void* ptr) {
 } // namespace screeps
 
 // Keep loop function alive
-//EMSCRIPTEN_KEEPALIVE void loop();
+EMSCRIPTEN_KEEPALIVE void loop();

@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 'use strict';
+// Reads a source map from stdin and strips out source code information, leaving only line number
+// information. Also normalizes path names.
 const buffer = require('buffer');
 const fs = require('fs');
 const path = require('path');

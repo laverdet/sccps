@@ -10,9 +10,9 @@ let { flush, print } = function() {
 
 	function printLine(stream, line) {
 		if (stream === 0) {
-			console.log(line);
+			console.log(`<span style="white-space:normal">${line}</span>`);
 		} else if (stream === 2) {
-			console.log(`<span style="color:#e79da7">${line}</span>`);
+			console.log(`<span style="white-space:normal;color:#e79da7">${line}</span>`);
 		} else {
 			throw new Error(`Unknown output stream ${stream}`);
 		}
@@ -94,6 +94,8 @@ function bufferToString(buffer) {
 	return ret;
 }
 
+let buffer;
+print(2, 'Global reset');
 function* initialize() {
 
 	// Try to load inflate
@@ -104,7 +106,9 @@ function* initialize() {
 	} catch (err) {}
 
 	// Load compiled module
-	let runtime, wasm, sourceMap;
+	let runtime, wasm;
+	let sourceMaps = Object.create(null);
+	let dylibs;
 	try {
 		// WebAssembly
 		runtime = require('the_general');
@@ -112,24 +116,33 @@ function* initialize() {
 		yield 'wasm';
 	} catch (err) {
 		// asm.js
+		buffer = buffer || new ArrayBuffer(201326592);
 		runtime = require('the_general-asmjs');
 		yield 'asmjs';
 		if (runtime instanceof Uint8Array) {
-			let module = { exports: {} };
-			(new Function('exports', 'module', bufferToString(inflate.inflate(runtime)))).call(module, module.exports, module);
-			runtime = module.exports;
-			yield 'inflate-runtime';
-		}
-		// Look for source map (only for asm.js)
-		try {
-			let sourceMapDeflated = require('the_general-map');
-			yield 'map';
-			let sourceMapJson = JSON.parse(bufferToString(inflate.inflate(sourceMapDeflated)));
-			yield 'map-inflate';
+			// Archived file with dynamic libraries and maps
+			let archive = JSON.parse(bufferToString(inflate.inflate(runtime)));
+			yield 'inflate';
+			dylibs = Object.create(null);
+			for (let name in archive) {
+				if (name !== '_main') {
+					dylibs[name] = archive[name].src;
+				}
+			}
+			runtime = function(evil, src) {
+				return function(module) {
+					global.Module = module;
+					evil(src);
+					return module;
+				};
+			}(eval, archive._main.src);
+			// Load source maps
 			let SourceMapConsumer = require('source-map').SourceMapConsumer;
-			sourceMap = new SourceMapConsumer(sourceMapJson);
-			yield 'map-parse';
-		} catch (err) {}
+			for (let name in archive) {
+				sourceMaps[name] = new SourceMapConsumer(archive[name].map);
+			}
+			yield 'maps';
+		}
 	}
 
 	// Load our modules
@@ -148,17 +161,44 @@ function* initialize() {
 	};
 	yield 'lib';
 
-	// Initialize runtime
-	const mod = runtime({
+	// Base module parameters for the main module + dylibs
+	let modBase = {
 		ENVIRONMENT: 'SHELL',
-		wasmBinary: wasm,
 		print: line => print(0, line),
 		printErr: line => print(2, line),
+		screeps: screeps,
+		onAbort: function(what) {
+			throw new Error(what);
+		},
+	};
+
+	// Start the runtime
+	const mod = runtime(Object.assign({}, modBase, {
+		buffer,
+		wasmBinary: wasm,
 		noInitialRun: true,
 		noExitRuntime: true,
-		screeps: screeps,
-	});
+		read: function(lib) {
+			return dylibs[lib];
+		},
+	}));
 	yield 'runtime';
+
+	// Link dylibs
+	if (dylibs) {
+		let currentLib;
+		let evil = eval;
+		global.eval = function(src) {
+			// Ensures library name makes it to stack traces for source maps to work
+			return evil(`(function ${currentLib.replace(/!/g, '$').replace(/-/g, '_')}(evil, src){return evil(src);})`)(evil, src);
+		};
+		for (let lib in dylibs) {
+			currentLib = lib;
+			mod.loadDynamicLibrary(lib);
+			yield lib.replace(/^dylib-/, '').replace(/!/g, '/');
+		}
+		global.eval = evil;
+	}
 
 	// Initialize internal structures
 	try {
@@ -239,23 +279,35 @@ function* initialize() {
 			} else {
 				message = error.message;
 			}
+
 			// Render frames
 			let renderer;
-			if (sourceMap) {
+			let lastFn;
+			if (sourceMaps) {
 				renderer = function(frame) {
 					let fnName = frame.getFunctionName();
+					let lastFnCopy = lastFn;
+					lastFn = fnName;
 					let demangled = demangle(fnName);
 					let source;
-					let line = frame.getLineNumber() - 5; // Messy function bloat
+					let line = frame.getLineNumber(); // Messy function bloat
 					let column = frame.getColumnNumber();
 					if (fnName !== demangled) {
-						let position = sourceMap.originalPositionFor({ line, column });
-						if (position.source === null) {
-							let origin = frame.getEvalOrigin() || `${frame.getScriptNameOrSourceURL()}:${frame.getLineNumber()}:${frame.getColumnNumber()}`;
-							return `${demangled} (${origin})`;
-						} else {
-							return `${demangled} (${position.source}:${position.line})`;
+						let libMatch = /eval at (dylib_[^ ]+)/.exec(frame.getEvalOrigin());
+						if (libMatch !== null) {
+							let sourceMap = sourceMaps[libMatch[1].replace(/\$/g, '!').replace(/_/g, '-')];
+							if (sourceMap !== undefined) {
+								let position = sourceMap.originalPositionFor({ line, column });
+								if (position.source !== null) {
+									return `${demangled} (${position.source}:${position.line})`;
+								} else if (fnName === lastFnCopy) {
+									// Cross-library invocation will dupe the function
+									return null;
+								}
+							}
 						}
+						let origin = frame.getEvalOrigin() || `${frame.getScriptNameOrSourceURL()}:${line}:${column}`;
+						return `${demangled} (${origin})`;
 					}
 					return frame;
 				};
@@ -276,8 +328,9 @@ function* initialize() {
 					break;
 				}
 			}
-			return `${message}\n${stack.filter(frame => !/^(?:dynCall_|invoke_|_emscripten_asm_const_)[dfiv]+$|^___cxa_throw/.test(frame.getFunctionName())).map(function(frame) {
-				return `    at ${renderer(frame)}\n`;
+			let noise = /^(?:dynCall|ftCall|invoke|_emscripten_asm_const)_[dfiv]+$|^asm\.|^_.+__wrapper$|^___cxa_throw/;
+			return `${message}\n${stack.filter(frame => !noise.test(frame.getFunctionName())).map(renderer).filter(frame => frame).map(function(frame) {
+				return `    at ${frame}\n`;
 			}).join('')}`;
 		}
 	};
@@ -287,7 +340,7 @@ function* initialize() {
 		inflate.destroy();
 		inflate = undefined;
 	}
-	runtime = undefined;
+	runtime = wasm = dylibs = modBase = undefined;
 	gc();
 	yield 'gc';
 	yield `!Heap: ${Game.cpu.getHeapStatistics().used_heap_size / 1024 / 1024}mb`;

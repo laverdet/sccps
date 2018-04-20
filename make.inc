@@ -2,11 +2,17 @@
 SHELL := bash
 TARGET ?= debug
 BUILD_PATH = build/$(TARGET)
-OUT = $(BUILD_PATH)/out
+ASMJS = $(BUILD_PATH)/asmjs
+WASM = $(BUILD_PATH)/wasm
 
 # Utilities
 DEFLATE = $(SCREEPS_PATH)/deflate.js
+MAKE_ARCHIVE = $(SCREEPS_PATH)/make-archive.js
+MERGE_SYMBOLS = $(SCREEPS_PATH)/merge-symbols.js
 STRIP_MAP = $(SCREEPS_PATH)/strip-map.js
+NOTHING =
+SPACE = $(NOTHING) $(NOTHING)
+COMMA = ,
 
 # Object paths
 SCREEPS_PATH ?= screeps
@@ -18,10 +24,6 @@ ifeq ($(TARGET), debug)
 SOURCE_MAP_RUNTIME += source-map.js inflate.js inflate-wasm.wasm
 endif
 
-.SECONDEXPANSION:
-SRCS += $(addprefix $(SCREEPS_PATH)/src/,$(SCREEPS_SRCS))
-OBJS = $(addprefix build/$(TARGET)/,$(patsubst %.cc,%.bc,$(SRCS)))
-
 # Default compiler flags
 CXXFLAGS += \
 	-std=c++1z \
@@ -29,15 +31,15 @@ CXXFLAGS += \
 	-isystem $(SCREEPS_PATH)/include \
 	-I.
 EMFLAGS += \
-	-s STRICT=1 -s MODULARIZE=1 -s NO_FILESYSTEM=1 -s BINARYEN_ASYNC_COMPILATION=0 \
+	-s STRICT=1 -s NO_FILESYSTEM=1 -s BINARYEN_ASYNC_COMPILATION=0 \
 	-s DISABLE_EXCEPTION_CATCHING=0 \
-	-s EXPORTED_FUNCTIONS="['__Z4loopv']" \
 	-s ALLOW_MEMORY_GROWTH=0 -s TOTAL_MEMORY=201326592
 
 # Additional flags for debug or release
 ifeq ($(TARGET), debug)
-CXXFLAGS += -g4 -O1 -ftrapv
+CXXFLAGS += -g4 -O2 -ftrapv
 EMFLAGS += -s ASSERTIONS=1 -s DEMANGLE_SUPPORT=1
+DYNAMIC_LINK = 1
 else
 ifeq ($(TARGET), release)
 CXXFLAGS += -O3
@@ -47,16 +49,37 @@ $(error Invalid target. Must be "debug" or "release" $(TARGET))
 endif
 endif
 
+# Create objects from sources
+SCREEPS_FULL_SRCS = $(addprefix $(SCREEPS_PATH)/src/,$(SCREEPS_SRCS))
+ifeq ($(DYNAMIC_LINK), 1)
+MAIN_SRCS = $(SCREEPS_FULL_SRCS)
+DYLIB_SRCS = $(SRCS)
+ASMJS_EMFLAGS += -s MAIN_MODULE=2 \
+	-s EXPORTED_FUNCTIONS=$$(cat $(BUILD_PATH)/symbols.json) \
+	-s EXTRA_EXPORTED_RUNTIME_METHODS="['loadDynamicLibrary']"
+else
+MAIN_SRCS = $(SCREEPS_FULL_SRCS) $(SRCS)
+ASMJS_EMFLAGS = -s MODULARIZE=1
+endif
+WASM_EMFLAGS = -s MODULARIZE=1 -s WASM=1 -s EXPORTED_FUNCTIONS="['__Z4loopv']"
+OBJS = $(addprefix $(BUILD_PATH)/,$(patsubst %.cc,%.bc,$(subst /,!,$(MAIN_SRCS))))
+DYLIB_OBJS = $(addprefix $(BUILD_PATH)/,$(patsubst %.cc,%.bc,$(subst /,!,$(DYLIB_SRCS))))
+ASMJS_DYLIBS = $(patsubst $(BUILD_PATH)/%.bc,$(BUILD_PATH)/dylib-%.js,$(DYLIB_OBJS))
+ASMJS_OBJ_SYMBOLS = $(patsubst %.bc,%.nm,$(OBJS))
+ASMJS_DYLIB_SYMBOLS = $(patsubst %.bc,%.nm,$(DYLIB_OBJS))
+
 # Default targets
-asmjs: runtime $(addprefix $(OUT)/,$(SOURCE_MAP_RUNTIME))
-wasm: runtime $(OUT)/$(MODULE_NAME).js $(OUT)/$(MODULE_NAME)-wasm.wasm
-runtime: $(addprefix $(OUT)/,$(SCREEPS_RUNTIME))
+asmjs: runtime-asmjs $(addprefix $(ASMJS)/,$(SOURCE_MAP_RUNTIME))
+wasm: runtime-wasm $(WASM)/$(MODULE_NAME).js $(WASM)/$(MODULE_NAME)-wasm.wasm
+runtime-asmjs: $(addprefix $(ASMJS)/,$(SCREEPS_RUNTIME))
+runtime-wasm: $(addprefix $(WASM)/,$(SCREEPS_RUNTIME))
+.PHONY: asmjs wasm runtime-asmjs runtime-wasm
 
 # Compress asmjs in debug builds, also include source map
 ifeq ($(TARGET), debug)
-asmjs: $(OUT)/$(MODULE_NAME)-asmjs.wasm $(OUT)/$(MODULE_NAME)-map.wasm
+asmjs: $(ASMJS)/$(MODULE_NAME)-asmjs.wasm
 else
-asmjs: $(OUT)/$(MODULE_NAME)-asmjs.js
+asmjs: $(ASMJS)/$(MODULE_NAME)-asmjs.js
 endif
 
 # Include header dependencies
@@ -64,65 +87,69 @@ include $(shell find build -name '*.d' 2>/dev/null)
 %.h: %.h
 
 # Directory creation
+.SECONDEXPANSION:
 build/.:
 	mkdir -p $@
-
 build%/.:
 	mkdir -p $@
+.PRECIOUS: build/. build%/.
 
 # Bytecode targets
-$(BUILD_PATH)/%.bc: %.cc | $$(@D)/.
+$(BUILD_PATH)/%.bc: $$(subst !,/,$$*.cc) | $$(@D)/.
 	$(CXX) -c -o $@ $< $(CXXFLAGS) -MD
+.PRECIOUS: $(BUILD_PATH)/%.bc
 
 # asmjs
-$(BUILD_PATH)/module-asmjs.js: $$(OBJS) | $$(@D)/.
-	$(CXX) -o $@ $^ $(CXXFLAGS) $(EMFLAGS) --memory-init-file 0
-$(BUILD_PATH)/module-asmjs.js.map: $(BUILD_PATH)/module-asmjs.js ;
+$(BUILD_PATH)/_main.js: $(OBJS) $(BUILD_PATH)/symbols.json | $$(@D)/.
+	$(CXX) -o $@ $(OBJS) $(CXXFLAGS) $(EMFLAGS) $(ASMJS_EMFLAGS) --memory-init-file 0
 
-$(OUT)/$(MODULE_NAME)-asmjs.js: $(BUILD_PATH)/module-asmjs.js | $$(@D)/.
-	@rm $(OUT)/$(MODULE_NAME)-asmjs.wasm 2>/dev/null || true
-	@rm $(OUT)/$(MODULE_NAME)-map.wasm 2>/dev/null || true
-	@rm $(OUT)/$(MODULE_NAME).js 2>/dev/null || true
-	@rm $(OUT)/$(MODULE_NAME)-wasm.wasm 2>/dev/null || true
+dylib-%.js: %.bc
+	$(CXX) -o $@ $^ $(CXXFLAGS) $(EMFLAGS) -s SIDE_MODULE=1 --memory-init-file 0
+.PRECIOUS: dylib-%.js
+
+$(BUILD_PATH)/%.js.map: $(BUILD_PATH)/%.js ;
+
+$(ASMJS)/$(MODULE_NAME)-asmjs.js: $(BUILD_PATH)/_main.js | $$(@D)/.
 	cp $< $@
 
-$(OUT)/$(MODULE_NAME)-asmjs.wasm: $(BUILD_PATH)/module-asmjs.js | $$(@D)/.
-	@rm $(OUT)/$(MODULE_NAME)-asmjs.js 2>/dev/null || true
-	@rm $(OUT)/$(MODULE_NAME).js 2>/dev/null || true
-	@rm $(OUT)/$(MODULE_NAME)-wasm.wasm 2>/dev/null || true
-	cat $< | $(DEFLATE) > $@
+$(ASMJS)/$(MODULE_NAME)-asmjs.wasm: $(BUILD_PATH)/_main.js $(ASMJS_DYLIBS) | $$(@D)/.
+	$(MAKE_ARCHIVE) $^ | $(DEFLATE) > $@
 
-$(OUT)/$(MODULE_NAME)-map.wasm: $(BUILD_PATH)/module-asmjs.js.map | $$(@D)/.
+$(ASMJS)/dylib-%-map.wasm: $(BUILD_PATH)/dylib-%.js.map | $$(@D)/.
 	cat $< | $(STRIP_MAP) | $(DEFLATE) > $@
 
+%.nm: %.bc
+	$(LLVM_NM) $^ > $@
+.PRECIOUS: %.nm
+
+$(BUILD_PATH)/symbols.json: $(BUILD_PATH)/symbols.json.marker
+$(BUILD_PATH)/symbols.json.marker: $(ASMJS_DYLIB_SYMBOLS) $(ASMJS_OBJ_SYMBOLS) | $$(@D)/.
+	touch $@
+	$(MERGE_SYMBOLS) $(BUILD_PATH)/symbols.json $(ASMJS_OBJ_SYMBOLS) -- $(ASMJS_DYLIB_SYMBOLS)
+
 # wasm
-$(BUILD_PATH)/module-wasm.js: $$(OBJS) | $$(@D)/.
-	$(CXX) -o $@ $^ $(CXXFLAGS) $(EMFLAGS) -s WASM=1
-$(BUILD_PATH)/module-wasm.wasm: $(BUILD_PATH)/module-wasm.js ;
+$(BUILD_PATH)/_main-wasm.js: $(OBJS) $(DYLIB_OBJS) | $$(@D)/.
+	$(CXX) -o $@ $^ $(CXXFLAGS) $(EMFLAGS) $(WASM_EMFLAGS)
+$(BUILD_PATH)/_main-wasm.wasm: $(BUILD_PATH)/_main-wasm.js ;
 
-$(OUT)/$(MODULE_NAME)-wasm.wasm: $(BUILD_PATH)/module-wasm.wasm | $$(@D)/.
-	@rm $(OUT)/inflate.js 2>/dev/null || true
-	@rm $(OUT)/inflate-wasm.wasm 2>/dev/null || true
-	@rm $(OUT)/$(MODULE_NAME)-asmjs.js 2>/dev/null || true
-	@rm $(OUT)/$(MODULE_NAME)-asmjs.wasm 2>/dev/null || true
-	@rm $(OUT)/$(MODULE_NAME)-map.wasm 2>/dev/null || true
+$(WASM)/$(MODULE_NAME)-wasm.wasm: $(BUILD_PATH)/_main-wasm.wasm | $$(@D)/.
 	cp $< $@
 
-$(OUT)/$(MODULE_NAME).js: $(BUILD_PATH)/module-wasm.js | $$(@D)/.
+$(WASM)/$(MODULE_NAME).js: $(BUILD_PATH)/_main-wasm.js | $$(@D)/.
 	cp $< $@
 
-# Copy JS files to build/{}/
-$(OUT)/%.js: $(SCREEPS_PATH)/js/%.js | $$(@D)/.
+# Copy screeps runtime JS files to build/{}/
+$(ASMJS)/%.js $(WASM)/%.js: $(SCREEPS_PATH)/js/%.js | $$(@D)/.
 	cp $< $@
 
-# Needed for inflate
-$(OUT)/inflate-wasm.wasm: $(SCREEPS_PATH)/js/inflate-wasm.wasm | $$(@D)/.
+# inflate.js wasm backend
+$(ASMJS)/inflate-wasm.wasm $(WASM)/inflate-wasm.wasm: $(SCREEPS_PATH)/js/inflate-wasm.wasm | $$(@D)/.
 	cp $< $@
 
-# Flags
-.PRECIOUS: build/. build%/. $(BUILD_PATH)/%.bc
-
-.PHONY: clean asmjs wasm runtime
-
+# Cleanups
 clean:
 	$(RM) -rf build
+
+clean-out:
+	$(RM) -rf $(ASMJS) $(WASM)
+.PHONY: clean clean-out
