@@ -148,14 +148,9 @@ function* initialize() {
 	// Load our modules
 	const screeps = {
 		array: require('array'),
-		creep: require('creep'),
-		game: require('game'),
 		object: require('object'),
 		position: require('position'),
-		resource: require('resource'),
-		room: require('room'),
 		string: require('string'),
-		structure: require('structure'),
 		util: require('util'),
 		vector: require('vector'),
 	};

@@ -31,6 +31,7 @@ class game_state_t {
 			game_state_t* game,
 			uint32_t rx, uint32_t ry,
 			uint32_t energy_available, uint32_t energy_capacity_available,
+			void* mineral_ptr,
 			void* creeps_begin, void* creeps_end,
 			void* dropped_resources_begin, void* dropped_resources_end,
 			void* sources_begin, void* sources_end,
@@ -41,6 +42,7 @@ class game_state_t {
 		static void reserve_rooms(game_state_t* game, uint32_t rooms_count);
 
 	public:
+		uint8_t gcl;
 		uint32_t time;
 
 		std::unordered_map<room_location_t, room_t> rooms;

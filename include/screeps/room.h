@@ -4,6 +4,7 @@
 #include "./position.h"
 #include "./resource.h"
 #include "./structure.h"
+#include <optional>
 
 namespace screeps {
 
@@ -60,12 +61,11 @@ class room_t {
 		uint32_t energy_available;
 		uint32_t energy_capacity_available;
 		controller_t* controller = nullptr;
-		mineral_t mineral;
+		std::optional<mineral_t> mineral;
 		// storage_t* storage = nullptr;
 		// terminal_t* terminal = nullptr;
 
 		// construction_site
-		// mineral
 		list_t<creep_t> creeps;
 		list_t<dropped_resource_t> dropped_resources;
 		// list_t<flag_t> flags;
@@ -76,7 +76,7 @@ class room_t {
 		room_t(
 			room_location_t location,
 			uint32_t energy_available, uint32_t energy_capacity_available,
-			const mineral_t& mineral,
+			const mineral_t* mineral,
 			creep_t* creeps_begin, creep_t* creeps_end,
 			dropped_resource_t* dropped_resources_begin, dropped_resource_t* dropped_resources_end,
 			source_t* sources_begin, source_t* sources_end,
@@ -85,7 +85,7 @@ class room_t {
 		) :
 			location(location),
 			energy_available(energy_available), energy_capacity_available(energy_capacity_available),
-			mineral(mineral),
+			mineral(mineral == nullptr ? std::nullopt : std::optional<mineral_t>(*mineral)),
 			creeps(creeps_begin, creeps_end),
 			dropped_resources(dropped_resources_begin, dropped_resources_end),
 			sources(sources_begin, sources_end),

@@ -3,8 +3,6 @@
 
 namespace screeps {
 
-static mineral_t mineral_hole;
-
 /**
  * game_t implementation
  */
@@ -25,18 +23,8 @@ void game_state_t::load() {
 	structures.clear();
 
 	EM_ASM({
-		Module.screeps.game.write(Module, $0, $1, $2, $3, $4, $5, $6, $7, $8);
-	},
-		this,
-		&this->time,
-		&creeps,
-		&dropped_resources,
-		&flags,
-		&sources,
-		&structures,
-		&tombstones,
-		&mineral_hole
-	);
+		Module.screeps.object.writeGame(Module, $0);
+	}, this);
 }
 
 creep_t* game_state_t::creep_by_name(const creep_t::name_t& name) {
@@ -93,8 +81,34 @@ const structure_union_t* game_state_t::structure_by_id(const id_t& id) const {
 
 EMSCRIPTEN_KEEPALIVE
 void game_state_t::init() {
+	static mineral_t mineral_hole;
 	EM_ASM({
-		Module.screeps.object.init({
+		Module.screeps.object.initGameLayout({
+			'creeps': $0,
+			'droppedResources': $1,
+			'flags': $2,
+			'sources': $3,
+			'structures': $4,
+			'tombstones': $5,
+
+			'gcl': $6,
+			'mineralHole': $7,
+			'time': $8,
+		});
+	},
+		offsetof(game_state_t, creeps),
+		offsetof(game_state_t, dropped_resources),
+		offsetof(game_state_t, flags),
+		offsetof(game_state_t, sources),
+		offsetof(game_state_t, structures),
+		offsetof(game_state_t, tombstones),
+
+		offsetof(game_state_t, gcl),
+		&mineral_hole,
+		offsetof(game_state_t, time)
+	);
+	EM_ASM({
+		Module.screeps.object.initDroppedResourceLayout({
 			'droppedResource': {
 				'sizeof': $0,
 				'amount': $1,
@@ -147,6 +161,7 @@ void game_state_t::flush_room(
 	game_state_t* game,
 	uint32_t rx, uint32_t ry,
 	uint32_t energy_available, uint32_t energy_capacity_available,
+	void* mineral_ptr,
 	void* creeps_begin, void* creeps_end,
 	void* dropped_resources_begin, void* dropped_resources_end,
 	void* sources_begin, void* sources_end,
@@ -160,7 +175,7 @@ void game_state_t::flush_room(
 		std::forward_as_tuple(
 			room,
 			energy_available, energy_capacity_available,
-			mineral_hole,
+			reinterpret_cast<mineral_t*>(mineral_ptr),
 			reinterpret_cast<creep_t*>(creeps_begin), reinterpret_cast<creep_t*>(creeps_end),
 			reinterpret_cast<dropped_resource_t*>(dropped_resources_begin), reinterpret_cast<dropped_resource_t*>(dropped_resources_end),
 			reinterpret_cast<source_t*>(sources_begin), reinterpret_cast<source_t*>(sources_end),

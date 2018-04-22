@@ -1,23 +1,29 @@
 'use strict';
-module.exports = {
-	write(env, ptr, sizeof, capacity, generator, fn) {
-		let offset = ptr + 4;
-		for (let item of generator) {
-			fn(env, offset, item);
-			offset += sizeof;
-		}
-		let length = (offset - ptr - 4) / sizeof;
-		if (length > capacity) {
+const that = module.exports = {
+	// Write entire contents of `array` to `ptr`, using `fn` as a writer
+	write(env, ptr, sizeof, capacity, array, fn) {
+		if (capacity < array.length) {
 			throw new Error('Array overflow');
 		}
-		env.HEAPU32[ptr >> 2] = length;
+		let offset = ptr + 4;
+		for (let ii = array.length - 1; ii >= 0; --ii) {
+			fn(env, offset + ii * sizeof, array[ii]);
+		}
+		env.HEAPU32[ptr >> 2] = array.length;
 	},
 
-	read(env, ptr, sizeof, fn) {
-		let end = ptr + 4 + env.HEAPU32[ptr >> 2] * sizeof;
-		for (let offset = ptr + 4; offset < end; offset += sizeof) {
-			fn(env, offset);
+	// Append contents of `array` to `ptr`, using `fn` as a writer. Returns pointer to end of array.
+	writeAppend(env, ptr, sizeof, capacity, array, fn) {
+		let length = env.HEAPU32[ptr >> 2];
+		if (capacity < length + array.length) {
+			throw new Error('Array overflow');
 		}
+		let offset = ptr + 4 + length * sizeof;
+		for (let ii = array.length - 1; ii >= 0; --ii) {
+			fn(env, offset + ii * sizeof, array[ii]);
+		}
+		env.HEAPU32[ptr >> 2] = length + array.length;
+		return offset + array.length * sizeof;
 	},
 
 	map(env, ptr, sizeof, fn) {
@@ -31,9 +37,12 @@ module.exports = {
 		return array;
 	},
 
-	push(env, ptr, sizeof) {
-		let length = env.HEAPU32[ptr >> 2];
-		env.HEAPU32[ptr >> 2] = length + 1;
+	push(env, ptr, sizeof, capacity) {
+		let length = env.HEAPU32[ptr >> 2] + 1;
+		if (length > capacity) {
+			throw new Error('Array overflow');
+		}
+		env.HEAPU32[ptr >> 2] = length;
 		return ptr + 4 + length * sizeof;
 	},
 };

@@ -39,10 +39,4 @@ const that = module.exports = {
 		}
 		return visual;
 	},
-
-	write(env, ptr, pos) {
-		let room = that.parseRoomName(pos.roomName);
-		env.HEAPU16[(ptr + 0) >> 1] = pos.x + room.rx * 50;
-		env.HEAPU16[(ptr + 2) >> 1] = pos.y + room.ry * 50;
-	},
 };

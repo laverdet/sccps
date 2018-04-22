@@ -49,7 +49,7 @@ WASM_EMFLAGS += $(MAIN_EMFLAGS) -s BINARYEN_ASYNC_COMPILATION=0
 # Object paths
 .SECONDEXPANSION:
 SCREEPS_SRCS = creep.cc game.cc memory.cc path-finder.cc position.cc resource.cc room.cc structure.cc terrain.cc
-SCREEPS_RUNTIME = array.js creep.js game.js main.js object.js position.js resource.js room.js string.js structure.js util.js vector.js
+SCREEPS_RUNTIME = array.js main.js object.js position.js string.js util.js vector.js
 
 # Create objects from sources
 SCREEPS_FULL_SRCS = $(addprefix $(SCREEPS_PATH)/src/,$(SCREEPS_SRCS))

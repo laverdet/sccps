@@ -5,7 +5,7 @@ namespace screeps {
 
 void structure_t::init() {
 	EM_ASM({
-		Module.screeps.structure.init({
+		Module.screeps.object.initStructureLayout({
 			'sizeof': $0,
 			'structure': {
 				'structureType': $1,
@@ -17,9 +17,13 @@ void structure_t::init() {
 			'owned': {
 				'my': $4,
 			},
-			'spawn': {
+			'extension': {
 				'energy': $5,
 				'energyCapacity': $6,
+			},
+			'spawn': {
+				'energy': $7,
+				'energyCapacity': $8,
 			},
 		});
 	},
@@ -31,6 +35,9 @@ void structure_t::init() {
 		offsetof(destroyable_structure_t, hits_max),
 		// owned structure
 		offsetof(owned_structure_t, my),
+		// extension
+		offsetof(extension_t, energy),
+		offsetof(extension_t, energy_capacity),
 		// spawn
 		offsetof(spawn_t, energy),
 		offsetof(spawn_t, energy_capacity)
@@ -43,7 +50,7 @@ void structure_t::init() {
 int spawn_t::spawn_creep(const creep_body_t& body, const std::string& name) const {
 	return EM_ASM_INT({
 		return Module.screeps.util.getObjectById(Module, $0).spawnCreep(
-			Module.screeps.creep.readBodyPartList(Module, $1),
+			Module.screeps.object.readCreepBodyPartArray(Module, $1),
 			Module.screeps.string.readOneByteStringData(Module, $2, $3), { directions: [ RIGHT ] }
 		);
 	}, &this->id, &body, name.c_str(), name.length());

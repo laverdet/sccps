@@ -19,7 +19,7 @@ int creep_t::cancel_order(const char* method) const {
 int creep_t::drop(resource_t resource, int amount) const {
 	return EM_ASM_INT({
 		return Module.screeps.util.getObjectById(Module, $0).drop(
-			Module.screeps.resource.cToJs($1),
+			Module.screeps.object.readResourceType($1),
 			$2 === -1 ? undefined : $2
 		);
 	}, &this->id, resource, amount);
@@ -59,7 +59,7 @@ int creep_t::transfer(const game_object_t& target, resource_t resource, int amou
 	return EM_ASM_INT({
 		return Module.screeps.util.getObjectById(Module, $0).transfer(
 			Module.screeps.util.getObjectById(Module, $1),
-			Module.screeps.resource.cToJs($2),
+			Module.screeps.object.readResourceType($2),
 			$3 === -1 ? undefined : $3
 		);
 	}, &this->id, &target.id, resource, amount);
@@ -91,7 +91,7 @@ const std::vector<creep_active_bodypart_t> creep_t::get_active_bodyparts() const
 
 void creep_t::init() {
 	EM_ASM({
-		Module.screeps.creep.init({
+		Module.screeps.object.initCreepLayout({
 			'sizeof': $0,
 			'body': $1,
 			'carry': $2,
