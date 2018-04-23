@@ -57,7 +57,9 @@ let { flush, print } = function() {
 		},
 
 		flush() {
-			if (lineRepeat > 0) {
+			if (lineRepeat === 1) {
+				printLine(lastStream, lastLine);
+			} else if (lineRepeat > 0) {
 				notifyRepeat(lineRepeat, skipTick !== Game.time);
 			} else if (skippedCount > 0) {
 				let showOmittedCount = Math.max(0, omittedLines.length - kShowOmittedLines);
