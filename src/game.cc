@@ -84,18 +84,20 @@ void game_state_t::init() {
 	static mineral_t mineral_hole;
 	EM_ASM({
 		Module.screeps.object.initGameLayout({
-			'creeps': $0,
-			'droppedResources': $1,
-			'flags': $2,
-			'sources': $3,
-			'structures': $4,
-			'tombstones': $5,
+			'constructionSites': $0,
+			'creeps': $1,
+			'droppedResources': $2,
+			'flags': $3,
+			'sources': $4,
+			'structures': $5,
+			'tombstones': $6,
 
-			'gcl': $6,
-			'mineralHole': $7,
-			'time': $8,
+			'gcl': $7,
+			'mineralHole': $8,
+			'time': $9,
 		});
 	},
+		offsetof(game_state_t, construction_sites),
 		offsetof(game_state_t, creeps),
 		offsetof(game_state_t, dropped_resources),
 		offsetof(game_state_t, flags),
@@ -127,19 +129,13 @@ void game_state_t::init() {
 }
 
 EMSCRIPTEN_KEEPALIVE
-void game_state_t::flush_game(
-	game_state_t* game,
-	uint32_t creeps_count,
-	uint32_t dropped_resources_count,
-	uint32_t sources_count,
-	uint32_t structures_count,
-	uint32_t tombstones_count
-) {
-	game->creeps_by_id.reserve(creeps_count);
-	game->dropped_resources_by_id.reserve(dropped_resources_count);
-	game->sources_by_id.reserve(sources_count);
-	game->structures_by_id.reserve(structures_count);
-	game->tombstones_by_id.reserve(tombstones_count);
+void game_state_t::flush_game(game_state_t* game) {
+	game->construction_sites_by_id.reserve(game->construction_sites.size());
+	game->creeps_by_id.reserve(game->creeps.size());
+	game->dropped_resources_by_id.reserve(game->dropped_resources.size());
+	game->sources_by_id.reserve(game->sources.size());
+	game->structures_by_id.reserve(game->structures.size());
+	game->tombstones_by_id.reserve(game->tombstones.size());
 	for (auto& room : game->rooms) {
 		for (auto& creep : room.second.creeps) {
 			game->creeps_by_id.emplace(creep.id, &creep);
@@ -162,6 +158,7 @@ void game_state_t::flush_room(
 	uint32_t rx, uint32_t ry,
 	uint32_t energy_available, uint32_t energy_capacity_available,
 	void* mineral_ptr,
+	void* construction_sites_begin, void* construciton_sites_end,
 	void* creeps_begin, void* creeps_end,
 	void* dropped_resources_begin, void* dropped_resources_end,
 	void* sources_begin, void* sources_end,
@@ -176,6 +173,7 @@ void game_state_t::flush_room(
 			room,
 			energy_available, energy_capacity_available,
 			reinterpret_cast<mineral_t*>(mineral_ptr),
+			reinterpret_cast<construction_site_t*>(construction_sites_begin), reinterpret_cast<construction_site_t*>(construciton_sites_end),
 			reinterpret_cast<creep_t*>(creeps_begin), reinterpret_cast<creep_t*>(creeps_end),
 			reinterpret_cast<dropped_resource_t*>(dropped_resources_begin), reinterpret_cast<dropped_resource_t*>(dropped_resources_end),
 			reinterpret_cast<source_t*>(sources_begin), reinterpret_cast<source_t*>(sources_end),

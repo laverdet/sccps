@@ -6,7 +6,7 @@ const util = require('util');
 const kWorldSize = 255;
 
 // game_state_t
-let gameCreeps, gameDroppedResources, gameFlags, gameSources, gameStructures, gameTombstones;
+let gameConstructionSites, gameCreeps, gameDroppedResources, gameFlags, gameSources, gameStructures, gameTombstones;
 let gameGcl, gameMineralHole, gameTime;
 
 // resource_store_t
@@ -64,6 +64,10 @@ const [ resourceEnum, resourceReverseEnum ] = util.enumToMap([
 
 let extendedResourceStoreSizeof;
 let extendedResourceStorePtr;
+
+// construction_site_t
+let constructionSiteSizeof;
+let constructionSiteMy, constructionSiteProgress, constructionSiteProgressTotal, constructionSiteType;
 
 // creep_t
 const [ bodyPartEnum, bodyPartEnumReverse ] = util.enumToMap([
@@ -136,6 +140,7 @@ let structureSpawnEnergy, structureSpawnEnergyCapacity;
 
 const that = module.exports = {
 	initGameLayout(layout) {
+		gameConstructionSites = layout.constructionSites;
 		gameCreeps = layout.creeps;
 		gameDroppedResources = layout.droppedResources;
 		gameFlags = layout.flags;
@@ -148,10 +153,18 @@ const that = module.exports = {
 		gameTime = layout.time;
 	},
 
+	initConstructionSiteLayout(layout) {
+		constructionSiteSizeof = layout.sizeof;
+		constructionSiteMy = layout.my;
+		constructionSiteProgress = layout.progress;
+		constructionSiteProgressTotal = layout.progressTotal;
+		constructionSiteType = layout.structureType;
+	},
+
 	initCreepLayout(layout) {
 		creepSizeof = layout.sizeof;
 		creepCarry = layout.carry;
-		creepCarryCapacity = layout.carryCapacityy
+		creepCarryCapacity = layout.carryCapacity;
 		creepFatigue = layout.fatigue;
 		creepHits = layout.hits;
 		creepHitsMax = layout.hitsMax;
@@ -206,9 +219,38 @@ const that = module.exports = {
 		let sourcesBegin = ptr + gameSources + 4;
 		let structuresBegin = ptr + gameStructures + 4;
 		let creepsCount = 0, droppedResourcesCount = 0, sourcesCount = 0, structuresCount = 0;
+
+		// Write construction sites
+		let constructionSiteIds = Object.keys(Game.constructionSites);
+		constructionSiteIds.sort(function(left, right) {
+			let leftRoom = Game.constructionSites[left].pos.roomName;
+			let rightRoom = Game.constructionSites[right].pos.roomName;
+			if (leftRoom === rightRoom) {
+				return 0;
+			} else if (leftRoom < rightRoom) {
+				return -1;
+			} else {
+				return 1;
+			}
+		});
+		let constructionSitesFirstByRoom = Object.create(null);
+		let constructionSitesLastByRoom = Object.create(null);
+		ArrayLib.write(env, ptr + gameConstructionSites, constructionSiteSizeof, 100, constructionSiteIds, function(env, offset, id) {
+			let constructionSite = Game.constructionSites[id];
+			let roomName = constructionSite.pos.roomName;
+			if (constructionSitesFirstByRoom[roomName] === undefined) {
+				constructionSitesFirstByRoom[roomName] = offset;
+				constructionSitesLastByRoom[roomName] = offset + constructionSiteSizeof;
+			} else {
+				constructionSitesLastByRoom[roomName] = offset + constructionSiteSizeof;
+			}
+			that.writeConstructionSite(env, offset, constructionSite);
+		});
+
 		for (let ii = rooms.length - 1; ii >= 0; --ii) {
 			// Get initial array state
-			let room = Game.rooms[rooms[ii]];
+			let roomName = rooms[ii];
+			let room = Game.rooms[roomName];
 
 			// Push room to arrays
 			let creeps = room.find(FIND_CREEPS);
@@ -239,6 +281,7 @@ const that = module.exports = {
 				roomLocation.rx, roomLocation.ry,
 				room.energyAvailable, room.energyCapacityAvailable,
 				minerals.length > 0 ? gameMineralHole : 0,
+				constructionSitesFirstByRoom[roomName], constructionSitesLastByRoom[roomName],
 				creepsBegin, creepsEnd,
 				droppedResourcesBegin, droppedResourcesEnd,
 				sourcesBegin, sourcesEnd,
@@ -254,13 +297,13 @@ const that = module.exports = {
 		// Flush room structures
 		env.__ZN7screeps12game_state_t13reserve_roomsEPS0_j(ptr, flushes.length);
 		for (let ii = flushes.length - 1; ii >= 0; --ii) {
-			env.__ZN7screeps12game_state_t10flush_roomEPS0_jjjjPvS2_S2_S2_S2_S2_S2_S2_S2_S2_S2_.apply(env, flushes[ii]);
+			env.__ZN7screeps12game_state_t10flush_roomEPS0_jjjjPvS2_S2_S2_S2_S2_S2_S2_S2_S2_S2_S2_S2_.apply(env, flushes[ii]);
 		}
 
 		// Flush game
 		env.HEAPU8[(ptr + gameGcl) >> 0] = Game.gcl;
 		env.HEAPU32[(ptr + gameTime) >> 2] = Game.time;
-		env.__ZN7screeps12game_state_t10flush_gameEPS0_jjjjj(ptr, creepsCount, droppedResourcesCount, sourcesCount, structuresCount, 0);
+		env.__ZN7screeps12game_state_t10flush_gameEPS0_(ptr);
 	},
 
 	writeRoomObject(env, ptr, pos) {
@@ -275,6 +318,14 @@ const that = module.exports = {
 			throw new Error('`id` overflow');
 		}
 		StringLib.writeOneByteString(env, ptr + 4, obj.id);
+	},
+
+	writeConstructionSite(env, ptr, constructionSite) {
+		that.writeGameObject(env, ptr, constructionSite);
+		env.HEAPU8[(ptr + constructionSiteMy) >> 0] = constructionSite.my ? 1 : 0;
+		env.HEAPU32[(ptr + constructionSiteProgress) >> 2] = constructionSite.progress;
+		env.HEAPU32[(ptr + constructionSiteProgressTotal) >> 2] = constructionSite.progressTotal;
+		env.HEAPU32[(ptr + constructionSiteType) >> 2] = structureTypeEnum.get(constructionSite.structureType);
 	},
 
 	writeCreep(env, ptr, creep) {
