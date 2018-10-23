@@ -68,6 +68,7 @@ let { flush, print } = function() {
 					console.log(`<span style="color:#ffc66d">[Omitted <b>${skippedCount}</b> line${skippedCount > 1 ? 's' : ''}${Game.time !== skipTick ? ' on previous tick' : ''}]</span>`);
 				}
 				for (let ii = Math.max(0, omittedLines.length - kShowOmittedLines); ii < omittedLines.length; ++ii) {
+					console.log(ii, JSON.stringify(omittedLines[ii]));
 					printLine(omittedLines[ii].stream, omittedLines[ii].line);
 				}
 				if (Game.time !== skipTick) {
@@ -96,7 +97,7 @@ function bufferToString(buffer) {
 	return ret;
 }
 
-let buffer;
+let asmjsArchive, buffer;
 print(2, 'Global reset');
 function* initialize() {
 
@@ -123,12 +124,12 @@ function* initialize() {
 		yield 'asmjs';
 		if (runtime instanceof Uint8Array) {
 			// Archived file with dynamic libraries and maps
-			let archive = JSON.parse(bufferToString(inflate.inflate(runtime)));
+			asmjsArchive = asmjsArchive || JSON.parse(bufferToString(inflate.inflate(runtime)));
 			yield 'inflate';
 			dylibs = Object.create(null);
-			for (let name in archive) {
+			for (let name in asmjsArchive) {
 				if (name !== '_main') {
-					dylibs[name] = archive[name].src;
+					dylibs[name] = asmjsArchive[name].src;
 				}
 			}
 			runtime = function(evil, src) {
@@ -137,11 +138,11 @@ function* initialize() {
 					evil(src);
 					return module;
 				};
-			}(eval, archive._main.src);
+			}(eval, asmjsArchive._main.src);
 			// Load source maps
 			let SourceMapConsumer = require('source-map').SourceMapConsumer;
-			for (let name in archive) {
-				sourceMaps[name] = new SourceMapConsumer(archive[name].map);
+			for (let name in asmjsArchive) {
+				sourceMaps[name] = new SourceMapConsumer(asmjsArchive[name].map);
 			}
 			yield 'maps';
 		}
@@ -337,7 +338,7 @@ function* initialize() {
 		inflate.destroy();
 		inflate = undefined;
 	}
-	runtime = wasm = dylibs = modBase = undefined;
+	asmjsArchive = dylibs = modBase = runtime = wasm = undefined;
 	gc();
 	yield 'gc';
 	yield `!Heap: ${Game.cpu.getHeapStatistics().used_heap_size / 1024 / 1024}mb`;
