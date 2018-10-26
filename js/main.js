@@ -41,7 +41,7 @@ let { flush, print } = function() {
 			}
 			if (++lineCount > kMaxLinesPerTick) {
 				if (omittedLines === undefined) {
-					omittedLines = [ line ];
+					omittedLines = [{ stream, line }];
 				} else {
 					omittedLines.push({ stream, line });
 					if (omittedLines.length > kShowOmittedLines * 2) {
