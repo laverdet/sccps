@@ -19,10 +19,27 @@ module.exports = {
 		];
 	},
 
-	pad(str, num, char) {
-		while (str.length < num) {
-			str = char + str;
+	toColor(color) {
+		if (color === 0) {
+			return;
+		} else if (color & 0xff000000) {
+			return `rgba(${(color >> 16) & 0xff},${(color >> 8) & 0xff},${color & 0xff},${((color >> 24) & 0xff) / 0xff})`;
+		} else {
+			let str = color.toString(16);
+			let pad = '#';
+			for (let ii = 6 - str.length; ii > 0; --ii) {
+				pad += '0';
+			}
+			return pad + str;
 		}
-		return str;
+	},
+
+	toLineStyle(style) {
+		switch (style) {
+			case 1:
+				return 'dashed';
+			case 2:
+				return 'dotted';
+		}
 	},
 };

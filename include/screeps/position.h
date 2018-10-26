@@ -237,27 +237,6 @@ struct room_location_t : coord_base_t<room_location_t, uint8_t, uint16_t> {
 
 	const class terrain_t& terrain() const;
 	friend std::ostream& operator<<(std::ostream& os, room_location_t that);
-
-	struct circle_t {
-		double radius = 0.15;
-		uint32_t fill = 0xffffff;
-		double opacity = 0.5;
-		int32_t stroke = -1;
-		double stroke_width = 0.1;
-		// line_style
-	};
-	void draw_circle(double xx, double yy, const circle_t& options) const;
-	struct text_t {
-		uint32_t color = 0xffffff;
-		std::string font = "";
-		uint32_t stroke = -1;
-		double stroke_width = 0.15;
-		int32_t background_color = -1;
-		double background_padding = 0.3;
-		std::string align = "center";
-		double opacity = 1;
-	};
-	void draw_text(double xx, double yy, const std::string& text, const text_t& options) const;
 };
 
 // Simple container for a location in an arbitrary room
