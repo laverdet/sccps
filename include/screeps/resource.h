@@ -109,10 +109,10 @@ struct resource_store_t {
 
 		value_type& operator[](resource_t type) {
 			if (extended == nullptr) {
-				if (single_type == type) {
-					return single_amount;
-				} else if (single_amount == 0) {
+				if (single_amount == 0) {
 					single_type = type;
+					return single_amount;
+				} else if (single_type == type) {
 					return single_amount;
 				} else {
 					promote();
@@ -123,10 +123,12 @@ struct resource_store_t {
 
 		value_type operator[](resource_t type) const {
 			if (extended == nullptr) {
-				if (single_type == type) {
-					return single_amount;
-				} else {
+				// nb: In the case where this store has nothing then only `single_amount` will be set,
+				// `single_type` will be garbage
+				if (single_amount == 0 || single_type != type) {
 					return 0;
+				} else {
+					return single_amount;
 				}
 			}
 			return (*extended)[(int)type];
