@@ -119,4 +119,12 @@ void creep_t::init() {
 	);
 }
 
+std::ostream& operator<<(std::ostream& os, const creep_t& that) {
+	if (that.my) {
+		return os <<"creep_t[" <<that.name <<"]";
+	} else {
+		return os <<"creep_t[!" <<that.id <<"]";
+	}
+}
+
 } // namespace screeps

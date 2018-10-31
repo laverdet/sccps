@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <cstdint>
+#include <iostream>
 #include "./array.h"
 
 namespace screeps {
@@ -25,6 +26,8 @@ enum struct resource_t {
 	// Marker for number of resource types
 	size,
 };
+
+std::ostream& operator<<(std::ostream& os, resource_t type);
 
 // `store` or `carry` on game objects. Optimized in the case <=1 resource type is in the store, and
 // will reference an external location if more resources are stored.

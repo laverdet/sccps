@@ -4,6 +4,13 @@
 namespace screeps {
 
 /**
+ * game_object_t implementation
+ */
+std::ostream& operator<<(std::ostream& os, const game_object_t& that) {
+	return os <<"game_object_t[" <<that.id <<"]";
+}
+
+/**
  * game_t implementation
  */
 void game_state_t::load() {

@@ -1,4 +1,5 @@
 #pragma once
+#include <iostream>
 #include "./constants.h"
 #include "./position.h"
 #include "./string.h"
@@ -13,6 +14,7 @@ struct room_object_t {
 using id_t = string_t<kMaximumIdLength>;
 struct game_object_t : room_object_t {
 	id_t id;
+	friend std::ostream& operator<<(std::ostream& os, const game_object_t& that);
 };
 
 } // namespace screeps

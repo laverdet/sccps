@@ -28,7 +28,7 @@ std::ostream& operator<<(std::ostream& os, room_location_t that) {
 }
 
 std::ostream& operator<<(std::ostream& os, local_position_t that) {
-	os <<"local_position_t[" <<(int)(that.xx % 50) <<", " <<(int)(that.yy % 50) <<"]";
+	os <<"local_position_t[" <<(int)that.xx <<", " <<(int)that.yy <<"]";
 	return os;
 }
 

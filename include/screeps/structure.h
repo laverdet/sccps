@@ -55,6 +55,7 @@ struct structure_t : game_object_t {
 	const type_t type; // must be first!
 
 	static void init();
+	friend std::ostream& operator<<(std::ostream& os, const structure_t& that);
 };
 
 struct destroyable_structure_t : structure_t {

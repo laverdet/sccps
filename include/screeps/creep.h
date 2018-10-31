@@ -4,6 +4,7 @@
 #include "./position.h"
 #include "./object.h"
 #include "./resource.h"
+#include <iostream>
 #include <vector>
 
 namespace screeps {
@@ -64,6 +65,7 @@ struct creep_t : game_object_t {
 	const std::vector<creep_active_bodypart_t> get_active_bodyparts() const;
 
 	static void init();
+	friend std::ostream& operator<<(std::ostream& os, const creep_t& that);
 };
 
 } // namespace screeps
