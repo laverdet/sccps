@@ -81,7 +81,8 @@ const [ bodyPartEnum, bodyPartEnumReverse ] = util.enumToMap([
 	WORK,
 ]);
 let creepSizeof;
-let creepCarry, creepCarryCapacity, creepFatigue, creepHits, creepHitsMax, creepMy, creepName, creepSpawning, creepTicksToLive;
+let creepBody, creepCarry, creepCarryCapacity, creepFatigue, creepHits, creepHitsMax, creepMy, creepName, creepSpawning, creepTicksToLive;
+let creepBodyPartSizeof, creepBodyPartBoost, creepBodyPartType;
 
 // dropped_resource_t
 let droppedResourceSizeof;
@@ -163,6 +164,7 @@ const that = module.exports = {
 
 	initCreepLayout(layout) {
 		creepSizeof = layout.sizeof;
+		creepBody = layout.body;
 		creepCarry = layout.carry;
 		creepCarryCapacity = layout.carryCapacity;
 		creepFatigue = layout.fatigue;
@@ -171,6 +173,9 @@ const that = module.exports = {
 		creepMy = layout.my;
 		creepName = layout.name;
 		creepSpawning = layout.spawning;
+		creepBodyPartSizeof = layout.bodyPartSizeof;
+		creepBodyPartBoost = layout.bodyPartBoost;
+		creepBodyPartType = layout.bodyPartType;
 	},
 
 	initDroppedResourceLayout(layout) {
@@ -331,6 +336,10 @@ const that = module.exports = {
 	writeCreep(env, ptr, creep) {
 		that.writeGameObject(env, ptr, creep);
 		that.writeResourceStore(env, ptr + creepCarry, creep.carry);
+		ArrayLib.write(env, ptr + creepBody, creepBodyPartSizeof, 50, creep.body, function(env, ptr, part) {
+			env.HEAPU32[(ptr + creepBodyPartBoost) >> 2] = resourceEnum.get(part.boost);
+			env.HEAPU32[(ptr + creepBodyPartType) >> 2] = bodyPartEnum.get(part.type);
+		});
 		env.HEAPU32[(ptr + creepCarryCapacity) >> 2] = creep.carryCapacity;
 		env.HEAPU32[(ptr + creepFatigue) >> 2] = creep.fatigue;
 		env.HEAPU32[(ptr + creepHits) >> 2] = creep.hits;

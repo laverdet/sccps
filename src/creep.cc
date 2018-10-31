@@ -103,6 +103,9 @@ void creep_t::init() {
 			'name': $8,
 			'spawning': $9,
 			'ticksToLive': $10,
+			'bodyPartSizeof': $11,
+			'bodyPartBoost': $12,
+			'bodyPartType': $13
 		});
 	},
 		sizeof(creep_t),
@@ -115,7 +118,10 @@ void creep_t::init() {
 		offsetof(creep_t, my),
 		offsetof(creep_t, name),
 		offsetof(creep_t, spawning),
-		offsetof(creep_t, ticksToLive)
+		offsetof(creep_t, ticksToLive),
+		sizeof(creep_bodypart_t),
+		offsetof(creep_bodypart_t, boost),
+		offsetof(creep_bodypart_t, type)
 	);
 }
 
