@@ -10,6 +10,7 @@ namespace screeps {
 
 // These will match the constants in game
 enum struct direction_t { top = 1, top_right, right, bottom_right, bottom, bottom_left, left, top_left };
+std::ostream& operator<<(std::ostream& os, direction_t dir);
 
 // Abstract neighbor iterators
 template <typename Type, direction_t... Neighbors>

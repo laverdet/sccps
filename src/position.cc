@@ -13,6 +13,21 @@ const terrain_t& room_location_t::terrain() const {
 	return *terrain_map[id];
 }
 
+std::ostream& operator<<(std::ostream& os, direction_t dir) {
+	os <<"direction_t::";
+	switch (dir) {
+		case direction_t::top: return os <<"top";
+		case direction_t::top_right: return os <<"top_right";
+		case direction_t::right: return os <<"right";
+		case direction_t::bottom_right: return os <<"bottom_right";
+		case direction_t::bottom: return os <<"bottom";
+		case direction_t::bottom_left: return os <<"bottom_left";
+		case direction_t::left: return os <<"left";
+		case direction_t::top_left: return os <<"top_left";
+	}
+	return os <<(int)dir;
+}
+
 std::ostream& operator<<(std::ostream& os, room_location_t that) {
 	if (that.xx == 0 && that.yy == 0) {
 		os <<"sim";
