@@ -7,23 +7,32 @@ namespace screeps {
 visual_t::point_t::point_t(local_position_t position) : xx(position.xx), yy(position.yy) {}
 visual_t::point_t::point_t(position_t position) : xx(position.to_local().xx), yy(position.to_local().yy) {}
 
-	/*
-void visual_t::draw_circle(float xx, float yy, const visual_t::circle_t& options) const {
+void visual_t::draw_circle(room_location_t room, point_t center, float radius, const visual_t::circle_t& options) {
 	EM_ASM({
-		Module.screeps.position.getVisual($0, $1).circle($2, $3, {
-			'radius': $4,
-			'fill': Module.screeps.util.toColor($5),
-			'opacity': $6,
-			'stroke': Module.screeps.util.toColor($7),
-			'strokeWidth': $8,
-		});
+		Module.screeps.position.getVisual($0, $1).circle(
+			$2, $3, {
+				'radius': $4,
+				'fill': Module.screeps.util.toColor($5),
+				'opacity': $6,
+				'stroke': Module.screeps.util.toColor($7),
+				'strokeWidth': $8,
+				'lineStyle': Module.screeps.util.toLineStyle($9),
+			}
+		);
 	},
-		this->xx, this->yy, xx, yy,
-		options.radius, options.fill.rgba,
+		room.xx, room.yy,
+		center.xx, center.yy,
+		radius, options.fill.rgba,
 		options.opacity,
-		options.stroke.rgba, options.stroke_width);
+		options.stroke.rgba,
+		options.stroke_width,
+		options.line_style
+	);
 }
-*/
+
+void visual_t::draw_circle(position_t position, float radius, const visual_t::circle_t& options) {
+	visual_t::draw_circle(position.room_location(), position, radius, options);
+}
 
 void visual_t::draw_line(room_location_t room, point_t p1, point_t p2, const line_t& options) {
 	EM_ASM({
@@ -65,6 +74,30 @@ void visual_t::draw_poly(room_location_t room, const std::vector<point_t>& point
 	},
 		room.xx, room.yy,
 		points.data(), points.data() + points.size(),
+		options.fill.rgba,
+		options.opacity,
+		options.stroke.rgba,
+		options.stroke_width,
+		options.line_style
+	);
+}
+
+void visual_t::draw_rect(room_location_t room, point_t p1, point_t p2, const rect_t& options) {
+	EM_ASM({
+		Module.screeps.position.getVisual($0, $1).rect(
+			$2, $3,
+			$4, $5, {
+				'fill': module.screeps.util.toColor($6),
+				'opacity': $7,
+				'stroke': module.screeps.util.toColor($8),
+				'strokeWidth': $9,
+				'lineStyle': module.screeps.util.toLineStyle($10),
+			}
+		);
+	},
+		room.xx, room.yy,
+		p1.xx, p1.yy,
+		p2.xx - p1.xx, p2.yy - p1.yy,
 		options.fill.rgba,
 		options.opacity,
 		options.stroke.rgba,

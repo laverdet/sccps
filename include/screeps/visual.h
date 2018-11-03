@@ -21,15 +21,6 @@ struct _visual_structs_t {
 
 	enum struct line_style_t { solid, dashed, dotted };
 
-	struct circle_t {
-		float radius = 0.15;
-		color_t fill = 0xffffff;
-		float opacity = 0.5;
-		color_t stroke{};
-		float stroke_width = 0.1;
-		// line_style
-	};
-
 	struct line_t {
 		float width = 0.1;
 		color_t color = 0xffffff;
@@ -38,9 +29,9 @@ struct _visual_structs_t {
 	};
 
 	struct poly_t {
-		color_t fill{};
+		color_t fill = 0xffffff;
 		float opacity = 0.5;
-		color_t stroke = 0xffffff;
+		color_t stroke{};
 		float stroke_width = 0.1;
 		line_style_t line_style = line_style_t::solid;
 	};
@@ -58,11 +49,12 @@ struct _visual_structs_t {
 };
 
 struct visual_t {
-	using color_t = _visual_structs_t::color_t;
+	using color_t = _visual_structs_t::poly_t;
 	using line_style_t = _visual_structs_t::line_style_t;
-	using circle_t = _visual_structs_t::circle_t;
+	using circle_t = _visual_structs_t::poly_t;
 	using line_t = _visual_structs_t::line_t;
 	using poly_t = _visual_structs_t::poly_t;
+	using rect_t = _visual_structs_t::poly_t;
 	using text_t = _visual_structs_t::text_t;
 
 	struct point_t {
@@ -72,11 +64,13 @@ struct visual_t {
 		point_t(float xx, float yy) : xx(xx), yy(yy) {}
 	};
 
-	// static void draw_circle(float xx, float yy, const visual_t::circle_t& options = {}) const;
+	static void draw_circle(room_location_t room, point_t center, float radius = 0.15, const circle_t& options = {});
+	static void draw_circle(position_t position, float radius = 0.15, const circle_t& options = {});
 	static void draw_line(room_location_t room, point_t p1, point_t p2, const line_t& options = {});
 	static void draw_poly(room_location_t room, const std::vector<point_t>& points, const poly_t& options = {});
+	static void draw_rect(room_location_t room, point_t p1, point_t p2, const rect_t& options = {});
 	static void draw_text(room_location_t room, point_t origin, const std::string& text, const text_t& options = {});
-	static void draw_text(position_t, const std::string& text, const text_t& options = {});
+	static void draw_text(position_t position, const std::string& text, const text_t& options = {});
 };
 
 } // namespace screeps
