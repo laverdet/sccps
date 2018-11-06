@@ -25,7 +25,7 @@ let { flush, print } = function() {
 	return {
 		print(stream, line) {
 			line = `${line}`;
-			if (line === lastLine && lastStream === stream) {
+			if (lineCount < kMaxLinesPerTick && line === lastLine && lastStream === stream) {
 				++lineRepeat;
 				return;
 			} else if (lineRepeat > 0) {
@@ -36,8 +36,6 @@ let { flush, print } = function() {
 				}
 				lineRepeat = 0;
 				lastLine = undefined;
-				++lineCount;
-				return;
 			}
 			if (++lineCount > kMaxLinesPerTick) {
 				if (omittedLines === undefined) {
@@ -68,7 +66,6 @@ let { flush, print } = function() {
 					console.log(`<span style="color:#ffc66d">[Omitted <b>${skippedCount}</b> line${skippedCount > 1 ? 's' : ''}${Game.time !== skipTick ? ' on previous tick' : ''}]</span>`);
 				}
 				for (let ii = Math.max(0, omittedLines.length - kShowOmittedLines); ii < omittedLines.length; ++ii) {
-					console.log(ii, JSON.stringify(omittedLines[ii]));
 					printLine(omittedLines[ii].stream, omittedLines[ii].line);
 				}
 				if (Game.time !== skipTick) {
