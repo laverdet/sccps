@@ -563,6 +563,10 @@ class local_matrix_store_t<Type, Store, Pack, false> {
 		constexpr Store* data() {
 			return costs.data();
 		}
+
+		constexpr const Store* data() const {
+			return costs.data();
+		}
 };
 
 // Backing store for local_matrix_t which can bitpack 1, 2, or 4 bits into a matrix
@@ -601,7 +605,14 @@ class local_matrix_store_t<Type, Store, Pack, true> {
 		using const_reference = Type;
 
 	public:
-		local_matrix_store_t() = default;
+		local_matrix_store_t() {
+			// Explicitly assign final data entry because otherwise it could be anything and .data() would
+			// be inconsistent
+			costs.back() = 0;
+		}
+
+		local_matrix_store_t(const local_matrix_store_t&) = default;
+
 		constexpr local_matrix_store_t(Type value) {
 			fill(value);
 		}
@@ -624,6 +635,10 @@ class local_matrix_store_t<Type, Store, Pack, true> {
 		}
 
 		constexpr Store* data() {
+			return costs.data();
+		}
+
+		constexpr const Store* data() const {
 			return costs.data();
 		}
 };
