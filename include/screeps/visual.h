@@ -61,14 +61,34 @@ struct visual_t {
 		float xx, yy;
 		point_t(local_position_t position);
 		point_t(position_t position);
-		point_t(float xx, float yy) : xx(xx), yy(yy) {}
+		constexpr point_t(float xx, float yy) : xx(xx), yy(yy) {}
+		constexpr point_t operator+(point_t that) const {
+			return point_t(xx + that.xx, yy + that.yy);
+		}
+		constexpr point_t operator-(point_t that) const {
+			return point_t(xx - that.xx, yy - that.yy);
+		}
+		constexpr point_t& operator+=(point_t that) {
+			xx += that.xx;
+			yy += that.yy;
+			return *this;
+		}
+		constexpr point_t& operator-=(point_t that) {
+			xx -= that.xx;
+			yy -= that.yy;
+			return *this;
+		}
 	};
 
 	static void draw_circle(room_location_t room, point_t center, float radius = 0.15, const circle_t& options = {});
 	static void draw_circle(position_t position, float radius = 0.15, const circle_t& options = {});
 	static void draw_line(room_location_t room, point_t p1, point_t p2, const line_t& options = {});
 	static void draw_poly(room_location_t room, const std::vector<point_t>& points, const poly_t& options = {});
+	static void draw_poly(room_location_t room, point_t pos, std::vector<point_t> points, const poly_t& options = {});
+	static void draw_poly(position_t pos, const std::vector<point_t>& points, const poly_t& options = {});
+	static void draw_rect(room_location_t room, point_t p1, float width, float height, const rect_t& options = {});
 	static void draw_rect(room_location_t room, point_t p1, point_t p2, const rect_t& options = {});
+	static void draw_rect(position_t pos, float width, float height, const rect_t& options = {});
 	static void draw_text(room_location_t room, point_t origin, const std::string& text, const text_t& options = {});
 	static void draw_text(position_t position, const std::string& text, const text_t& options = {});
 };
