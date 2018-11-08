@@ -19,7 +19,7 @@ class constexpr_neighbor_iteratable_t {
 		class iterator : public random_access_iterator_t<iterator> {
 			private:
 				Type origin;
-				uint8_t index = 0;
+				int index = 0;
 
 			public:
 				using value_type = Type;
@@ -28,7 +28,7 @@ class constexpr_neighbor_iteratable_t {
 
 				iterator() = default;
 				constexpr iterator(Type origin) : origin(origin), index(sizeof...(Neighbors)) {}
-				constexpr iterator(Type origin, uint8_t index) : origin(origin), index(index) {}
+				constexpr iterator(Type origin, int index) : origin(origin), index(index) {}
 
 				constexpr reference operator*() const {
 					const std::array<direction_t, sizeof...(Neighbors)> directions {{Neighbors...}};
@@ -69,11 +69,11 @@ class constexpr_neighbor_iteratable_t {
 template <typename Type>
 class dynamic_neighbor_iterable_t {
 	private:
-		class iterator : public forward_iterator_t<iterator> {
+		class iterator : public random_access_iterator_t<iterator> {
 			private:
 				Type origin;
 				const direction_t* directions;
-				uint8_t index = 0;
+				int index = 0;
 
 			public:
 				using value_type = Type;
@@ -81,7 +81,7 @@ class dynamic_neighbor_iterable_t {
 				using reference = Type;
 
 				iterator() = default;
-				constexpr iterator(Type origin, const direction_t* directions, uint8_t index) : origin(origin), directions(directions), index(index) {}
+				constexpr iterator(Type origin, const direction_t* directions, int index) : origin(origin), directions(directions), index(index) {}
 
 				Type operator*() const {
 					return origin.in_direction(directions[index - 1]);
@@ -91,9 +91,17 @@ class dynamic_neighbor_iterable_t {
 					return index == rhs.index;
 				}
 
-				constexpr iterator& operator++() {
-					--index;
+				constexpr bool operator<(const iterator& rhs) const {
+					return index > rhs.index;
+				}
+
+				constexpr iterator& operator+=(int val) {
+					index -= val;
 					return *this;
+				}
+
+				constexpr iterator operator+(int val) const {
+					return iterator(origin, index - val);
 				}
 		};
 		Type origin;
@@ -125,6 +133,66 @@ class dynamic_neighbor_iterable_t {
 		}
 };
 
+template <typename Type>
+class area_iterable_t {
+	private:
+		class iterator : public random_access_iterator_t<iterator> {
+			private:
+				typename Type::value_type width, offset, index;
+
+			public:
+				using value_type = Type;
+				using pointer = void;
+				using reference = Type;
+
+				iterator() = default;
+				constexpr iterator(int width, int offset, int index) : width(width), offset(offset), index(index) {}
+
+				constexpr reference operator*() const {
+					return Type(offset + index % width, index / width);
+				}
+
+				constexpr bool operator==(const iterator& rhs) const {
+					return index == rhs.index;
+				}
+
+				constexpr bool operator<(const iterator& rhs) const {
+					return index > rhs.index;
+				}
+
+				constexpr iterator& operator+=(int val) {
+					index += val;
+					return *this;
+				}
+
+				constexpr iterator operator+(int val) const {
+					return iterator(width, offset, index + 1);
+				}
+		};
+
+		typename Type::value_type width, offset, index, final_index;
+
+	public:
+		constexpr area_iterable_t(Type top_left, Type bottom_right) :
+			width(bottom_right.xx - top_left.xx + 1),
+			offset(top_left.xx),
+			index(top_left.yy * width),
+			final_index(index + (bottom_right.yy - top_left.yy + 1) * width) {
+
+			if (bottom_right.xx < top_left.xx || bottom_right.yy < top_left.yy) {
+				throw std::domain_error("Invalid area corners");
+			}
+		}
+
+		constexpr iterator begin() const {
+			return iterator(width, offset, index);
+		}
+
+		constexpr iterator end() const {
+			return iterator(width, offset, final_index);
+		}
+};
+
 // Base class for xx/yy pairs which implements some commonalities between the various game positions
 template <typename Derived, typename Integral, typename IntegralUnion>
 struct coord_base_t {
@@ -134,6 +202,7 @@ struct coord_base_t {
 			Integral xx, yy;
 		};
 	};
+	using value_type = IntegralUnion;
 	static constexpr size_t max = std::numeric_limits<IntegralUnion>::max();
 
 	coord_base_t() = default;
@@ -196,7 +265,7 @@ struct coord_base_t {
 			case direction_t::top_left:
 				return Derived(xx - 1, yy - 1);
 			default:
-				throw std::logic_error("Invalid direction");
+				throw std::domain_error("Invalid direction");
 		}
 	}
 
@@ -226,6 +295,10 @@ struct coord_base_t {
 		} else {
 			return direction_t::top_left;
 		}
+	}
+
+	static area_iterable_t<Derived> area(Derived top_left, Derived bottom_right) {
+		return {top_left, bottom_right};
 	}
 };
 
@@ -426,36 +499,6 @@ struct local_position_t : coord_base_t<local_position_t, int8_t, uint16_t> {
 	within_range_iterable_t within_range(uint8_t range) const {
 		return within_range_iterable_t(xx, yy, range);
 	}
-
-	/*
-	struct area_iterable_t {
-		struct iterator {
-			uint8_t xx, yy;
-			uint8_t origin_x, last_x;
-			constexpr iterator(uint8_t xx, uint8_t yy, uint8_t last_x) : xx(xx), yy(yy), origin_x(xx), last_x(last_x) {}
-			constexpr iterator(uint8_t xx, uint8_t yy) : xx(xx), yy(yy), origin_x(0), last_x(0) {}
-			constexpr bool operator!=(const iterator rhs) const {
-				return xx != rhs.xx || yy != rhs.yy;
-			}
-			constexpr iterator& operator++() {
-				if (xx == last_x) {
-					xx = origin_x;
-					++yy;
-				} else {
-					++xx;
-				}
-			}
-		};
-		uint8_t x1, y1, x2, y2;
-		constexpr area_iterable_t(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2) : x1(x1), y1(y1), x2(x2), y2(y2) {}
-		constexpr iterator begin() const {
-			return iterator(x1, y1, x2);
-		}
-		constexpr iterator end() const {
-			return iterator(x1, y2 + 1);
-		}
-	};
-	*/
 
 	struct all_iteratable_t {
 		struct iterator : public forward_iterator_t<iterator> {
