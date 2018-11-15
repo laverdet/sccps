@@ -26,13 +26,12 @@ class constexpr_neighbor_iteratable_t {
 				using pointer = void;
 				using reference = Type;
 
-				iterator() = default;
-				constexpr iterator(Type origin) : origin(origin), index(sizeof...(Neighbors)) {}
+				constexpr iterator() = default;
 				constexpr iterator(Type origin, int index) : origin(origin), index(index) {}
 
 				constexpr reference operator*() const {
 					const std::array<direction_t, sizeof...(Neighbors)> directions {{Neighbors...}};
-					return origin.in_direction(directions[index - 1]);
+					return origin.in_direction(directions[index]);
 				}
 
 				constexpr bool operator==(const iterator& rhs) const {
@@ -44,12 +43,12 @@ class constexpr_neighbor_iteratable_t {
 				}
 
 				constexpr iterator& operator+=(int val) {
-					index -= val;
+					index += val;
 					return *this;
 				}
 
 				constexpr iterator operator+(int val) const {
-					return iterator(origin, index - val);
+					return {origin, index + val};
 				}
 		};
 		Type origin;
@@ -58,11 +57,11 @@ class constexpr_neighbor_iteratable_t {
 		constexpr constexpr_neighbor_iteratable_t(Type origin) : origin(origin) {}
 
 		constexpr iterator begin() const {
-			return iterator(origin);
+			return {origin, 0};
 		}
 
 		constexpr iterator end() const {
-			return iterator();
+			return {origin, sizeof...(Neighbors)};
 		}
 };
 
@@ -72,64 +71,56 @@ class dynamic_neighbor_iterable_t {
 		class iterator : public random_access_iterator_t<iterator> {
 			private:
 				Type origin;
-				const direction_t* directions;
-				int index = 0;
+				const direction_t* direction = nullptr;
 
 			public:
 				using value_type = Type;
 				using pointer = void;
 				using reference = Type;
 
-				iterator() = default;
-				constexpr iterator(Type origin, const direction_t* directions, int index) : origin(origin), directions(directions), index(index) {}
+				constexpr iterator() = default;
+				constexpr iterator(Type origin, const direction_t* direction) : origin(origin), direction(direction) {}
 
 				Type operator*() const {
-					return origin.in_direction(directions[index - 1]);
+					return origin.in_direction(*direction);
 				}
 
 				constexpr bool operator==(const iterator& rhs) const {
-					return index == rhs.index;
+					return direction == rhs.direction;
 				}
 
 				constexpr bool operator<(const iterator& rhs) const {
-					return index > rhs.index;
+					return direction > rhs.direction;
 				}
 
 				constexpr iterator& operator+=(int val) {
-					index -= val;
+					direction += val;
 					return *this;
 				}
 
 				constexpr iterator operator+(int val) const {
-					return iterator(origin, index - val);
+					return {origin, direction + val};
 				}
 		};
 		Type origin;
-		const direction_t* directions;
-		uint8_t size;
+		const direction_t* _begin;
+		const direction_t* _end;
 
 	public:
-		constexpr dynamic_neighbor_iterable_t(Type origin, const direction_t* directions, uint8_t size) : origin(origin), directions(directions), size(size) {}
-
-		template <direction_t... Directions>
-		static auto reverse_directions() {
-			std::array<direction_t, sizeof...(Directions)> tmp{{Directions...}};
-			std::reverse(tmp.begin(), tmp.end());
-			return tmp;
-		}
+		constexpr dynamic_neighbor_iterable_t(Type origin, const direction_t* begin, const direction_t* end) : origin(origin), _begin(begin), _end(end) {}
 
 		template <direction_t... Directions>
 		static dynamic_neighbor_iterable_t factory(Type origin) {
-			static std::array<direction_t, sizeof...(Directions)> directions(reverse_directions<Directions...>());
-			return dynamic_neighbor_iterable_t(origin, directions.data(), directions.size());
+			static std::array<direction_t, sizeof...(Directions)> directions{{Directions...}};
+			return {origin, directions.data(), directions.data() + directions.size()};
 		}
 
 		constexpr iterator begin() const {
-			return iterator(origin, directions, size);
+			return {origin, _begin};
 		}
 
 		constexpr iterator end() const {
-			return iterator();
+			return {origin, _end};
 		}
 };
 
@@ -138,14 +129,14 @@ class area_iterable_t {
 	private:
 		class iterator : public random_access_iterator_t<iterator> {
 			private:
-				typename Type::value_type width, offset, index;
+				typename Type::value_type width = 0, offset = 0, index = 0;
 
 			public:
 				using value_type = Type;
 				using pointer = void;
 				using reference = Type;
 
-				iterator() = default;
+				constexpr iterator() = default;
 				constexpr iterator(int width, int offset, int index) : width(width), offset(offset), index(index) {}
 
 				constexpr reference operator*() const {
@@ -166,7 +157,7 @@ class area_iterable_t {
 				}
 
 				constexpr iterator operator+(int val) const {
-					return iterator(width, offset, index + 1);
+					return {width, offset, index + 1};
 				}
 		};
 
@@ -185,11 +176,11 @@ class area_iterable_t {
 		}
 
 		constexpr iterator begin() const {
-			return iterator(width, offset, index);
+			return {width, offset, index};
 		}
 
 		constexpr iterator end() const {
-			return iterator(width, offset, final_index);
+			return {width, offset, final_index};
 		}
 };
 
@@ -197,7 +188,7 @@ class area_iterable_t {
 template <typename Derived, typename Integral, typename IntegralUnion>
 struct coord_base_t {
 	union {
-		IntegralUnion id;
+		IntegralUnion id = 0;
 		struct {
 			Integral xx, yy;
 		};
@@ -205,12 +196,11 @@ struct coord_base_t {
 	using value_type = IntegralUnion;
 	static constexpr size_t max = std::numeric_limits<IntegralUnion>::max();
 
-	coord_base_t() = default;
+	constexpr coord_base_t() = default;
 	coord_base_t(memory_t& memory) {
 		memory <<*this;
 	}
-	constexpr coord_base_t(Integral xx, Integral yy) : xx(xx), yy(yy) {}
-	constexpr coord_base_t(const coord_base_t& that) = default;
+	constexpr coord_base_t(int xx, int yy) : xx(xx), yy(yy) {}
 
 	friend memory_t& operator<<(memory_t& memory, coord_base_t that) {
 		memory <<that.xx <<that.yy;
@@ -238,32 +228,32 @@ struct coord_base_t {
 		return id > rhs.id;
 	}
 
-	uint8_t distance_to(coord_base_t that) const {
+	constexpr uint8_t distance_to(coord_base_t that) const {
 		return std::max(std::abs(xx - that.xx), std::abs(yy - that.yy));
 	}
 
-	bool near_to(coord_base_t that) const {
+	constexpr bool near_to(coord_base_t that) const {
 		return distance_to(that) <= 1;
 	}
 
 	constexpr Derived in_direction(direction_t direction) const {
 		switch (direction) {
 			case direction_t::top:
-				return Derived(xx, yy - 1);
+				return {xx, yy - 1};
 			case direction_t::top_right:
-				return Derived(xx + 1, yy - 1);
+				return {xx + 1, yy - 1};
 			case direction_t::right:
-				return Derived(xx + 1, yy);
+				return {xx + 1, yy};
 			case direction_t::bottom_right:
-				return Derived(xx + 1, yy + 1);
+				return {xx + 1, yy + 1};
 			case direction_t::bottom:
-				return Derived(xx, yy + 1);
+				return {xx, yy + 1};
 			case direction_t::bottom_left:
-				return Derived(xx - 1, yy + 1);
+				return {xx - 1, yy + 1};
 			case direction_t::left:
-				return Derived(xx - 1, yy);
+				return {xx - 1, yy};
 			case direction_t::top_left:
-				return Derived(xx - 1, yy - 1);
+				return {xx - 1, yy - 1};
 			default:
 				throw std::domain_error("Invalid direction");
 		}
@@ -306,8 +296,6 @@ struct coord_base_t {
 // "E0S0" -> { xx: 128, yy: 128 }
 struct room_location_t : coord_base_t<room_location_t, uint8_t, uint16_t> {
 	using coord_base_t<room_location_t, uint8_t, uint16_t>::coord_base_t;
-	room_location_t() = default;
-	constexpr room_location_t(const room_location_t&) = default;
 
 	const class terrain_t& terrain() const;
 	friend std::ostream& operator<<(std::ostream& os, room_location_t that);
@@ -316,8 +304,6 @@ struct room_location_t : coord_base_t<room_location_t, uint8_t, uint16_t> {
 // Simple container for a location in an arbitrary room
 struct local_position_t : coord_base_t<local_position_t, int8_t, uint16_t> {
 	using coord_base_t<local_position_t, int8_t, uint16_t>::coord_base_t;
-	local_position_t() = default;
-	constexpr local_position_t(const local_position_t&) = default;
 
 	friend std::ostream& operator<<(std::ostream& os, local_position_t that);
 	constexpr struct position_t in_room(room_location_t room) const;
@@ -385,6 +371,7 @@ struct local_position_t : coord_base_t<local_position_t, int8_t, uint16_t> {
 		}
 	}
 
+	// TODO: This iterator is awful
 	struct with_range_iterable_t {
 		class iterator : public forward_iterator_t<iterator> {
 			private:
@@ -408,7 +395,7 @@ struct local_position_t : coord_base_t<local_position_t, int8_t, uint16_t> {
 				}
 
 				constexpr local_position_t operator*() const {
-					return local_position_t(xx, yy);
+					return {xx, yy};
 				}
 
 				constexpr bool operator==(const iterator& rhs) const {
@@ -443,17 +430,20 @@ struct local_position_t : coord_base_t<local_position_t, int8_t, uint16_t> {
 		};
 		int8_t xx, yy, range;
 		constexpr with_range_iterable_t(local_position_t origin, uint8_t range) : xx(origin.xx), yy(origin.yy), range(range) {}
+
 		constexpr iterator begin() const {
-			return iterator(xx, yy, range);
+			return {xx, yy, range};
 		}
+
 		constexpr iterator end() const {
-			return iterator(range * 8);
+			return {range * 8};
 		}
 	};
 	with_range_iterable_t with_range(uint8_t range) const {
-		return with_range_iterable_t(*this, range);
+		return {*this, range};
 	}
 
+	// TODO: Replace with area_iterable_t?
 	struct within_range_iterable_t {
 		class iterator : public forward_iterator_t<iterator> {
 			private:
@@ -489,28 +479,30 @@ struct local_position_t : coord_base_t<local_position_t, int8_t, uint16_t> {
 		};
 		uint8_t xx, yy, range;
 		constexpr within_range_iterable_t(uint8_t xx, uint8_t yy, uint8_t range) : xx(xx), yy(yy), range(range) {}
+
 		constexpr iterator begin() const {
-			return iterator(xx, yy);
+			return {xx, yy};
 		}
+
 		constexpr iterator end() const {
-			return iterator(range + 1);
+			return {range + 1};
 		}
 	};
 	within_range_iterable_t within_range(uint8_t range) const {
-		return within_range_iterable_t(xx, yy, range);
+		return {xx, yy, range};
 	}
 
 	struct all_iteratable_t {
-		struct iterator : public forward_iterator_t<iterator> {
+		struct iterator : public random_access_iterator_t<iterator> {
 			private:
-				uint16_t ii;
+				uint16_t ii = 0;
 
 			public:
 				using value_type = local_position_t;
 				using pointer = void;
 				using reference = local_position_t;
 
-				iterator() = default;
+				constexpr iterator() = default;
 				constexpr iterator(uint16_t ii) : ii(ii) {}
 
 				constexpr local_position_t operator*() const {
@@ -521,21 +513,31 @@ struct local_position_t : coord_base_t<local_position_t, int8_t, uint16_t> {
 					return ii == rhs.ii;
 				}
 
-				constexpr iterator& operator++() {
-					++ii;
+				constexpr bool operator<(const iterator& rhs) const {
+					return ii < rhs.ii;
+				}
+
+				constexpr iterator& operator+=(int val) {
+					ii += val;
 					return *this;
+				}
+
+				constexpr iterator operator+(int val) const {
+					return {ii + val};
 				}
 		};
 
 		constexpr iterator begin() const {
-			return iterator(0);
+			return {0};
 		}
+
 		constexpr iterator end() const {
-			return iterator(2500);
+			return {2500};
 		}
 	};
+
 	static constexpr all_iteratable_t all() {
-		return all_iteratable_t();
+		return {};
 	}
 };
 
@@ -544,17 +546,16 @@ struct local_position_t : coord_base_t<local_position_t, int8_t, uint16_t> {
 struct position_t : coord_base_t<position_t, uint16_t, uint32_t> {
 	using coord_base = coord_base_t<position_t, uint16_t, uint32_t>;
 	using coord_base::coord_base_t;
-	position_t() = default;
-	constexpr position_t(const position_t&) = default;
+	constexpr position_t() = default;
 	constexpr position_t(room_location_t room, local_position_t pos) : coord_base(room.xx * 50 + pos.xx, room.yy * 50 + pos.yy) {}
 	constexpr position_t(room_location_t room, uint8_t xx, uint8_t yy) : coord_base(room.xx * 50 + xx, room.yy * 50 + yy) {}
 
 	constexpr room_location_t room_location() const {
-		return room_location_t(xx / 50, yy / 50);
+		return {xx / 50, yy / 50};
 	}
 
 	constexpr local_position_t to_local() const {
-		return local_position_t(xx % 50, yy % 50);
+		return {xx % 50, yy % 50};
 	}
 
 	friend std::ostream& operator<<(std::ostream& os, position_t that);
@@ -566,12 +567,12 @@ struct position_t : coord_base_t<position_t, uint16_t, uint32_t> {
 		direction_t::left
 	>;
 	constexpr neighbors_iterable neighbors() const {
-		return neighbors_iterable(*this);
+		return {*this};
 	}
 };
 
-inline constexpr position_t local_position_t::in_room(room_location_t room) const {
-	return position_t(room, *this);
+constexpr position_t local_position_t::in_room(room_location_t room) const {
+	return {room, *this};
 }
 
 // Matrix of any type which holds a value for each position in a room
@@ -586,7 +587,7 @@ class local_matrix_store_t<Type, Store, Pack, false> {
 		using const_reference = typename std::conditional<std::is_trivial<Type>::value && sizeof(Type) <= sizeof(size_t), Type, const Type&>::type;
 
 	public:
-		local_matrix_store_t() = default;
+		constexpr local_matrix_store_t() = default;
 		constexpr local_matrix_store_t(Type value) {
 			fill(value);
 		}
@@ -595,11 +596,11 @@ class local_matrix_store_t<Type, Store, Pack, false> {
 			std::fill(costs.begin(), costs.end(), value);
 		}
 
-		constexpr reference operator[](uint16_t index) {
+		constexpr reference operator[](int index) {
 			return costs[index];
 		}
 
-		constexpr const_reference operator[](uint16_t index) const {
+		constexpr const_reference operator[](int index) const {
 			return costs[index];
 		}
 
@@ -633,10 +634,10 @@ class local_matrix_store_t<Type, Store, Pack, true> {
 		class reference {
 			private:
 				Store& ref;
-				uint8_t bit_pos;
+				int bit_pos;
 
 			public:
-				constexpr reference(uint8_t bit_pos, Store& ref) : ref(ref), bit_pos(bit_pos) {}
+				constexpr reference(int bit_pos, Store& ref) : ref(ref), bit_pos(bit_pos) {}
 				constexpr operator Type() const {
 					return (ref >> bit_pos) & Mask;
 				}
@@ -648,15 +649,14 @@ class local_matrix_store_t<Type, Store, Pack, true> {
 		using const_reference = Type;
 
 	public:
-		local_matrix_store_t() {
+		constexpr local_matrix_store_t() {
 			// Explicitly assign final data entry because otherwise it could be anything and .data() would
 			// be inconsistent
 			costs.back() = 0;
 		}
 
-		local_matrix_store_t(const local_matrix_store_t&) = default;
-
 		constexpr local_matrix_store_t(Type value) {
+			costs.back() = 0;
 			fill(value);
 		}
 
@@ -670,7 +670,7 @@ class local_matrix_store_t<Type, Store, Pack, true> {
 		}
 
 		constexpr reference operator[](uint16_t index) {
-			return reference((index & IndexMask) << IndexBitShift, costs[index >> IndexShift]);
+			return {(index & IndexMask) << IndexBitShift, costs[index >> IndexShift]};
 		}
 
 		constexpr const_reference operator[](uint16_t index) const {
@@ -703,15 +703,15 @@ class local_matrix_t : public local_matrix_store_t<Type, Store, Pack> {
 		using reference = typename local_matrix_store_t<Type, Store, Pack>::reference;
 		using const_reference = typename local_matrix_store_t<Type, Store, Pack>::const_reference;
 
-		constexpr reference get(uint8_t xx, uint8_t yy) {
+		constexpr reference get(int xx, int yy) {
 			return (*this)[xx * 50 + yy];
 		}
 
-		constexpr const_reference get(uint8_t xx, uint8_t yy) const {
+		constexpr const_reference get(int xx, int yy) const {
 			return (*this)[xx * 50 + yy];
 		}
 
-		constexpr void set(uint8_t xx, uint8_t yy, Type cost) {
+		constexpr void set(int xx, int yy, Type cost) {
 			(*this)[xx * 50 + yy] = cost;
 		}
 
@@ -735,19 +735,35 @@ struct std::hash<screeps::coord_base_t<Derived, Integral, IntegralUnion>> {
 	}
 };
 */
+template <> struct std::hash<screeps::room_location_t&> {
+	auto operator()(const screeps::room_location_t& val) const {
+		return std::hash<decltype(val.id)>()(val.id);
+	}
+};
 template <> struct std::hash<screeps::room_location_t> {
 	auto operator()(screeps::room_location_t val) const {
-		return std::hash<decltype(screeps::room_location_t().id)>()(val.id);
+		return std::hash<decltype(val.id)>()(val.id);
+	}
+};
+
+template <> struct std::hash<screeps::local_position_t&> {
+	auto operator()(const screeps::local_position_t& val) const {
+		return std::hash<decltype(val.id)>()(val.id);
 	}
 };
 template <> struct std::hash<screeps::local_position_t> {
 	auto operator()(screeps::local_position_t val) const {
-		return std::hash<decltype(screeps::local_position_t().id)>()(val.id);
+		return std::hash<decltype(val.id)>()(val.id);
+	}
+};
+
+template <> struct std::hash<screeps::position_t&> {
+	auto operator()(const screeps::position_t& val) const {
+		return std::hash<decltype(val.id)>()(val.id);
 	}
 };
 template <> struct std::hash<screeps::position_t> {
 	auto operator()(screeps::position_t val) const {
-		return std::hash<decltype(screeps::position_t().id)>()(val.id);
+		return std::hash<decltype(val.id)>()(val.id);
 	}
 };
-

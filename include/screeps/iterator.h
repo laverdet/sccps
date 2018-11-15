@@ -24,10 +24,9 @@ class forward_iterator_t {
 	public:
 		using iterator_category = std::forward_iterator_tag;
 		using difference_type = std::ptrdiff_t;
-		/*
-		constexpr bool operator==(const T& rhs) = 0;
-		constexpr T& operator++() = 0;
-		*/
+
+		constexpr bool operator==(const T& rhs);
+		constexpr T& operator++();
 
 		constexpr bool operator!=(const T& rhs) const {
 			return !(that() == rhs);
@@ -60,12 +59,11 @@ class random_access_iterator_t {
 	public:
 		using iterator_category = std::random_access_iterator_tag;
 		using difference_type = std::ptrdiff_t;
-		/*
-		constexpr bool operator==(const T& rhs) const = 0;
-		constexpr bool operator<(const T& rhs) const = 0;
-		constexpr T& operator+=(int val) = 0;
-		constexpr T operator+(int val) const = 0;
-		*/
+
+		constexpr bool operator==(const T& rhs) const;
+		constexpr bool operator<(const T& rhs) const;
+		constexpr T& operator+=(int val);
+		constexpr T operator+(int val) const;
 
 		constexpr bool operator!=(const T& rhs) const {
 			return !(that() == rhs);
@@ -179,19 +177,19 @@ class pointer_container_t {
 			return _end - _begin;
 		}
 
-		constexpr T* begin() {
+		constexpr pointer begin() {
 			return _begin;
 		}
 
-		constexpr T* end() {
+		constexpr pointer end() {
 			return _end;
 		}
 
-		constexpr const T* begin() const {
+		constexpr const_pointer begin() const {
 			return _begin;
 		}
 
-		constexpr const T* end() const {
+		constexpr const_pointer end() const {
 			return _end;
 		}
 };
