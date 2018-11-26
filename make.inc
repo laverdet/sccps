@@ -27,6 +27,7 @@ EMFLAGS += -s STRICT=1 -s DISABLE_EXCEPTION_CATCHING=0 -s ABORTING_MALLOC=0
 MAIN_EMFLAGS += -s ENVIRONMENT=shell -s NO_FILESYSTEM=1 -s TOTAL_MEMORY=201326592
 SIDE_EMFLAGS += -s SIDE_MODULE=1 -s EXPORT_ALL=1
 EXPORTED_FUNCTIONS += __Z4loopv
+MISSING_SYMBOLS = ___cxa_find_matching_catch ___cxa_find_matching_catch_2 ___cxa_find_matching_catch_3 ___resumeException ___errno_location
 
 # Additional flags for debug or release
 ifeq ($(TARGET), debug)
@@ -58,7 +59,7 @@ MAIN_SRCS = $(SCREEPS_FULL_SRCS)
 DYLIB_SRCS = $(SRCS)
 ASMJS_EMFLAGS += -s MAIN_MODULE=2 \
 	-s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$$($(TO_JSON) < $(SCREEPS_PATH)/emscripten_symbols) \
-	-s EXPORTED_FUNCTIONS=$$((cat $(DYLIB_LINKER_SYMBOLS); egrep '[CD]1' $(DYLIB_LINKER_SYMBOLS) | perl -pe 's/([CD])1/$$1\x32/') | $(TO_JSON)) \
+	-s EXPORTED_FUNCTIONS=$$((cat $(DYLIB_LINKER_SYMBOLS); echo $(MISSING_SYMBOLS); egrep '[CD]1' $(DYLIB_LINKER_SYMBOLS) | perl -pe 's/([CD])1/$$1\x32/') | $(TO_JSON)) \
 	-s EXTRA_EXPORTED_RUNTIME_METHODS="['loadDynamicLibrary']"
 else
 MAIN_SRCS = $(SCREEPS_FULL_SRCS) $(SRCS)

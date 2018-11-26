@@ -61,6 +61,7 @@ __gxx_personality_v0
 __gcc_personality_v0
 __cxa_find_matching_catch
 __resumeException
+__errno_location
 llvm_stacksave
 llvm_stackrestore
 __cxa_pure_virtual
