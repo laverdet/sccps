@@ -1,18 +1,29 @@
 #!/usr/bin/env node
 'use strict';
-// Given a list of JS files it will read each one plus a corresponding source map file, outputting
-// to stdout like this: `{'module': 'map': {}, 'src': '...'}`
+// Given a list of files it will create a tar-like archive. Screeps file sync is awful and one big
+// file tends to work much better than several small files. This also handles files in directories
+// for us too.
 const fs = require('fs');
 const path = require('path');
-let dylibs = process.argv.slice(2);
-process.stdout.write(JSON.stringify(Object.keys(dylibs).reduce(function(output, ii) {
-	let file = dylibs[ii];
-	let map = JSON.parse(fs.readFileSync(`${file}.map`, 'utf8'));
-	let src = fs.readFileSync(file, 'utf8');
-	delete map.sourcesContent;
-	map.sources = map.sources.map(function(file) {
-		return path.normalize(file.replace(/^.+\/system\/include\//, ''));
+let relative = process.argv[2];
+let ws = fs.createWriteStream(process.argv[3]);
+process.argv.slice(4).forEach(function(name) {
+	fs.readFile(name, function(err, data) {
+		if (err) {
+			throw err;
+		}
+		if (name.substr(0, relative.length) !== relative) {
+			throw new Error(`Path not relative: ${name}`);
+		}
+		name = name.substr(relative.length + 1);
+		let header = new Uint8Array(name.length + 8);
+		let headerView = new DataView(header.buffer);
+		headerView.setUint32(0, name.length);
+		for (let ii = 0; ii < name.length; ++ii) {
+			header[ii + 4] = name.charCodeAt(ii);
+		}
+		headerView.setUint32(name.length + 4, data.length);
+		ws.write(header);
+		ws.write(data);
 	});
-	output[path.basename(file).replace(/\.js$/, '')] = { map, src };
-	return output;
-}, {})));
+});

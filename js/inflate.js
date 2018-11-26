@@ -23,7 +23,7 @@ module.exports = function() {
 		_grow: () => { },
 	};
 
-	let module = new WebAssembly.Module(require('inflate-wasm'));
+	let module = new WebAssembly.Module(require('inflate.wasm'));
 	let exports = (new WebAssembly.Instance(module, { env })).exports;
 
 	const srcPtr = exports._malloc(CHUNK_SIZE);

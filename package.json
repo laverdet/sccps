@@ -1,0 +1,9 @@
+{
+  "name": "screeps-cpp",
+  "version": "0.0.1",
+  "private": true,
+  "license": "ISC",
+  "dependencies": {
+    "uglify-js": "^3.4.9"
+  }
+}

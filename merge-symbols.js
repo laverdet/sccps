@@ -37,7 +37,8 @@ for (let file of mainObjects) {
 // during debugging we won't have to rebuild the main module over and over.
 let hasExistingDatabase = true;
 try {
-	for (let symbol of JSON.parse(fs.readFileSync(outputFile, 'utf8'))) {
+	let symbols = fs.readFileSync(outputFile, 'utf8').split(/\n/g).filter(line => line);
+	for (let symbol of symbols) {
 		def[symbol] = undef[symbol] = true;
 	}
 } catch (err) {
@@ -65,7 +66,7 @@ for (let file in dylibSymbols) {
 }
 
 if (didUpdate) {
-	fs.writeFileSync(outputFile, JSON.stringify(Object.keys(undef)));
+	fs.writeFileSync(outputFile, `${Object.keys(undef).join('\n')}\n`);
 	if (hasExistingDatabase) {
 		console.log('\n\x1b[31mMain module must be rebuilt. Please re-run `make`.\n');
 		process.exit(1);

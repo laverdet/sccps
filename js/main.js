@@ -94,6 +94,18 @@ function bufferToString(buffer) {
 	return ret;
 }
 
+function maybeBufferToString(value) {
+	return typeof value === 'string' ? value : bufferToString(value);
+}
+
+function mangleFileName(name) {
+	return name.replace(/[\/.\-]/g, '__');
+}
+
+function evalWithName(evil, name, src) {
+	return evil(`(function ${mangleFileName(name)}(evil, src){return evil(src);})`)(evil, src);
+}
+
 let asmjsArchive, buffer;
 print(2, 'Global reset');
 function* initialize() {
@@ -102,48 +114,64 @@ function* initialize() {
 	let inflate;
 	try {
 		inflate = require('inflate');
-		yield 'load-inflate';
+		yield 'load:inflate';
 	} catch (err) {}
 
-	// Load compiled module
+	// Try to load source map parser
+	let SourceMapConsumer;
+	try {
+		SourceMapConsumer = require('source-map').SourceMapConsumer;
+		yield 'load:sourceMap';
+	} catch (err) {}
+
+	// Holders for runtime data
 	let runtime, wasm;
 	let sourceMaps = Object.create(null);
-	let dylibs;
-	try {
-		// WebAssembly
-		runtime = require('the_general');
-		wasm = require('the_general-wasm');
-		yield 'wasm';
-	} catch (err) {
-		// asm.js
-		buffer = buffer || new ArrayBuffer(201326592);
-		runtime = require('the_general-asmjs');
-		yield 'asmjs';
-		if (runtime instanceof Uint8Array) {
-			// Archived file with dynamic libraries and maps
-			asmjsArchive = asmjsArchive || JSON.parse(bufferToString(inflate.inflate(runtime)));
-			yield 'inflate';
-			dylibs = Object.create(null);
-			for (let name in asmjsArchive) {
-				if (name !== '_main') {
-					dylibs[name] = asmjsArchive[name].src;
-				}
+	let dylibs = Object.create(null);
+
+	// Extract custom archive format
+	let info = require('the_general');
+	let isAsmjs = true;
+	if (info instanceof Uint8Array) {
+		let view = new DataView(info.buffer, info.byteOffset, info.byteLength);
+		let ptr = 0;
+		while (ptr != info.length) {
+			// Extract file and name
+			let len = view.getUint32(ptr);
+			ptr += 4;
+			let name = String.fromCharCode.apply(String, info.subarray(ptr, ptr + len));
+			ptr += len;
+			len = view.getUint32(ptr);
+			ptr += 4;
+			let data = info.subarray(ptr, ptr + len);
+			ptr += len;
+			// Inflate if data is compressed
+			if (name.substr(-8) === '.deflate') {
+				name = name.substr(0, name.length - 8);
+				data = inflate.inflate(data);
 			}
-			runtime = function(evil, src) {
-				return function(module) {
+			// Handle files
+			if (name === 'screeps/asmjs.js' || name === 'screeps/wasm.js') {
+				runtime = function(module) {
 					global.Module = module;
-					evil(src);
+					evalWithName(eval, name, maybeBufferToString(data));
 					return module;
 				};
-			}(eval, asmjsArchive._main.src);
-			// Load source maps
-			let SourceMapConsumer = require('source-map').SourceMapConsumer;
-			for (let name in asmjsArchive) {
-				sourceMaps[name] = new SourceMapConsumer(asmjsArchive[name].map);
+			} else if (name === 'screeps/wasm.wasm') {
+				isAsmjs = false;
+				wasm = data;
+			} else if (name.substr(-9) === '.dylib.js') {
+				dylibs[name.substr(0, name.length - 3)] = maybeBufferToString(data);
+			} else if (name.substr(-11) === '.dylib.wasm') {
+				dylibs[name.substr(0, name.length - 5)] = data;
+			} else if (name.substr(-4) === '.map') {
+				sourceMaps[mangleFileName(name.substr(0, name.length - 4))] = new SourceMapConsumer(JSON.parse(maybeBufferToString(data)));
+			} else {
+				throw new Error(`Unhandled file: ${name}`);
 			}
-			yield 'maps';
 		}
 	}
+	yield 'extract';
 
 	// Load our modules
 	const screeps = {
@@ -156,41 +184,47 @@ function* initialize() {
 	};
 	yield 'lib';
 
-	// Base module parameters for the main module + dylibs
-	let modBase = {
-		ENVIRONMENT: 'SHELL',
+	// Missing function =o
+	global.invoke_X = function(...args) {
+		return Module['wasmTable'].get(args[0]).apply(null, args.slice(1));
+	}
+
+	// Start the runtime
+	if (isAsmjs) {
+		buffer = buffer || new ArrayBuffer(201326592);
+	}
+	const mod = runtime(global.Module = {
+		noInitialRun: true,
+		noExitRuntime: true,
 		print: line => print(0, line),
 		printErr: line => print(2, line),
-		screeps: screeps,
 		onAbort: function(what) {
 			throw new Error(what);
 		},
-	};
-
-	// Start the runtime
-	const mod = runtime(Object.assign({}, modBase, {
-		buffer,
-		wasmBinary: wasm,
-		noInitialRun: true,
-		noExitRuntime: true,
 		read: function(lib) {
 			return dylibs[lib];
 		},
-	}));
+		readBinary: function(lib) {
+			return dylibs[lib];
+		},
+		screeps,
+		buffer,
+		wasmBinary: wasm,
+	});
 	yield 'runtime';
 
 	// Link dylibs
-	if (dylibs) {
+	{
 		let currentLib;
 		let evil = eval;
 		global.eval = function(src) {
 			// Ensures library name makes it to stack traces for source maps to work
-			return evil(`(function ${currentLib.replace(/!/g, '$').replace(/-/g, '_')}(evil, src){return evil(src);})`)(evil, src);
+			return evalWithName(evil, currentLib, src);
 		};
 		for (let lib in dylibs) {
 			currentLib = lib;
 			mod.loadDynamicLibrary(lib);
-			yield lib.replace(/^dylib-/, '').replace(/!/g, '/');
+			yield lib;
 		}
 		global.eval = evil;
 	}
@@ -288,9 +322,9 @@ function* initialize() {
 					let line = frame.getLineNumber(); // Messy function bloat
 					let column = frame.getColumnNumber();
 					if (fnName !== demangled) {
-						let libMatch = /eval at (dylib_[^ ]+)/.exec(frame.getEvalOrigin());
+						let libMatch = /eval at ([^ ]+)/.exec(frame.getEvalOrigin());
 						if (libMatch !== null) {
-							let sourceMap = sourceMaps[libMatch[1].replace(/\$/g, '!').replace(/_/g, '-')];
+							let sourceMap = sourceMaps[libMatch[1]];
 							if (sourceMap !== undefined) {
 								let position = sourceMap.originalPositionFor({ line, column });
 								if (position.source !== null) {
@@ -335,7 +369,7 @@ function* initialize() {
 		inflate.destroy();
 		inflate = undefined;
 	}
-	asmjsArchive = dylibs = modBase = runtime = wasm = undefined;
+	asmjsArchive = dylibs = runtime = wasm = info = SourceMapConsumer = undefined;
 	gc();
 	yield 'gc';
 	yield `!Heap: ${Game.cpu.getHeapStatistics().used_heap_size / 1024 / 1024}mb`;
