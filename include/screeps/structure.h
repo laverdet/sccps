@@ -11,7 +11,7 @@ namespace screeps {
  */
 
 struct structure_t : game_object_t {
-	enum class type_t {
+	enum type_t {
 		container,
 		controller,
 		extension,
@@ -32,25 +32,6 @@ struct structure_t : game_object_t {
 		tower,
 		wall,
 	};
-	static constexpr type_t container = type_t::container;
-	static constexpr type_t controller = type_t::controller;
-	static constexpr type_t extension = type_t::extension;
-	static constexpr type_t extractor = type_t::extractor;
-	static constexpr type_t keeper_lair = type_t::keeper_lair;
-	static constexpr type_t lab = type_t::lab;
-	static constexpr type_t link = type_t::link;
-	static constexpr type_t nuker = type_t::nuker;
-	static constexpr type_t observer = type_t::observer;
-	static constexpr type_t portal = type_t::portal;
-	static constexpr type_t power_bank = type_t::power_bank;
-	static constexpr type_t power_spawn = type_t::power_spawn;
-	static constexpr type_t rampart = type_t::rampart;
-	static constexpr type_t road = type_t::road;
-	static constexpr type_t spawn = type_t::spawn;
-	static constexpr type_t storage = type_t::storage;
-	static constexpr type_t terminal = type_t::terminal;
-	static constexpr type_t tower = type_t::tower;
-	static constexpr type_t wall = type_t::wall;
 
 	const type_t type; // must be first!
 
