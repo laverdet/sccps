@@ -68,7 +68,7 @@ for (let file in dylibSymbols) {
 if (didUpdate) {
 	fs.writeFileSync(outputFile, `${Object.keys(undef).join('\n')}\n`);
 	if (hasExistingDatabase) {
-		console.log('\n\x1b[31mMain module must be rebuilt. Please re-run `make`.\n');
+		console.log('\n\x1b[31mMain module must be rebuilt. Please re-run `make`.\x1b[0m\n');
 		process.exit(1);
 	}
 }

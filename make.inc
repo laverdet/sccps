@@ -46,7 +46,7 @@ endif
 
 # Object paths
 .SECONDEXPANSION:
-SCREEPS_SRCS = creep.cc game.cc memory.cc path-finder.cc position.cc resource.cc room.cc structure.cc terrain.cc visual.cc
+SCREEPS_SRCS = cpu.cc creep.cc game.cc memory.cc path-finder.cc position.cc resource.cc room.cc structure.cc terrain.cc visual.cc
 SCREEPS_RUNTIME = array.js main.js object.js position.js string.js util.js vector.js inflate.js inflate.wasm.wasm
 ifeq ($(TARGET), debug)
 ASMJS_EXTRA_RUNTIME += source-map.js
@@ -109,9 +109,9 @@ $(BUILD_PATH)/%.bc: %.cc | $$(@D)/.
 %.nm: %.bc
 	$(LLVM_NM) $^ > $@
 $(DYLIB_LINKER_SYMBOLS): $(DYLIB_LINKER_SYMBOLS).marker
-$(DYLIB_LINKER_SYMBOLS).marker: $$(DYLIB_SYMBOLS) $$(OBJ_SYMBOLS) | $$(@D)/.
+$(DYLIB_LINKER_SYMBOLS).marker: $$(DYLIB_SYMBOLS) | $$(@D)/.
 	touch $@
-	$(MERGE_SYMBOLS) $(DYLIB_LINKER_SYMBOLS) $(OBJ_SYMBOLS) -- $(DYLIB_SYMBOLS)
+	$(MERGE_SYMBOLS) $(DYLIB_LINKER_SYMBOLS) -- $(DYLIB_SYMBOLS)
 .PRECIOUS: %.nm
 
 # DEFLATE

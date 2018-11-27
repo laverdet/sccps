@@ -103,7 +103,13 @@ function mangleFileName(name) {
 }
 
 function evalWithName(evil, name, src) {
-	return evil(`(function ${mangleFileName(name)}(evil, src){return evil(src);})`)(evil, src);
+	return evil(`(function ${mangleFileName(name)}(evil, src){return evil.call(global, src);})`)(evil, src);
+}
+
+global.trace = function trace(message) {
+	let stack = { message };
+	Error.captureStackTrace(stack, trace);
+	console.log(stack.stack);
 }
 
 let asmjsArchive, buffer;
@@ -211,35 +217,12 @@ function* initialize() {
 		buffer,
 		wasmBinary: wasm,
 	});
+	mod.__ZN7screeps3cpu18adjust_memory_sizeEi(STATICTOP);
 	yield 'runtime';
-
-	// Link dylibs
-	{
-		let currentLib;
-		let evil = eval;
-		global.eval = function(src) {
-			// Ensures library name makes it to stack traces for source maps to work
-			return evalWithName(evil, currentLib, src);
-		};
-		for (let lib in dylibs) {
-			currentLib = lib;
-			mod.loadDynamicLibrary(lib);
-			yield lib;
-		}
-		global.eval = evil;
-	}
-
-	// Initialize internal structures
-	try {
-		mod.__ZN7screeps12game_state_t4initEv();
-	} catch (err) {
-		print(2, `Uncaught error in init():\n${err.stack || err.message || err}`);
-		throw err;
-	}
-	let demangleHole = mod._malloc(256 + 4 + 1);
 
 	// Setup exception handler
 	new function() {
+		let demangleHole = mod._malloc(256 + 4 + 1);
 		function readCString(ptr) {
 			let str = '';
 			while (true) {
@@ -363,6 +346,34 @@ function* initialize() {
 			}).join('')}`;
 		}
 	};
+
+	// Link dylibs
+	{
+		let currentLib;
+		let evil = eval;
+		global.eval = function(src) {
+			// Ensures library name makes it to stack traces for source maps to work
+			return evalWithName(evil, currentLib, src);
+		};
+		for (let lib in dylibs) {
+			currentLib = lib;
+			// Dynamic libraries have a dynamic stack which counts against total memory. But it only
+			// affects dynamic builds so we adjust downwards that way heap stats are predictable during
+			// development.
+			mod.__ZN7screeps3cpu18adjust_memory_sizeEi(-TOTAL_STACK);
+			mod.loadDynamicLibrary(lib);
+			yield lib;
+		}
+		global.eval = evil;
+	}
+
+	// Initialize internal structures
+	try {
+		mod.__ZN7screeps12game_state_t4initEv();
+	} catch (err) {
+		print(2, `Uncaught error in init():\n${err.stack || err.message || err}`);
+		throw err;
+	}
 
 	// Collect garbage
 	if (inflate) {
