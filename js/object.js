@@ -247,7 +247,8 @@ const that = module.exports = {
 				constructionSitesFirstByRoom[roomName] = offset;
 				constructionSitesLastByRoom[roomName] = offset + constructionSiteSizeof;
 			} else {
-				constructionSitesLastByRoom[roomName] = offset + constructionSiteSizeof;
+				constructionSitesFirstByRoom[roomName] = Math.min(constructionSitesFirstByRoom[roomName], offset);
+				constructionSitesLastByRoom[roomName] = Math.max(constructionSitesLastByRoom[roomName], offset + constructionSiteSizeof);
 			}
 			that.writeConstructionSite(env, offset, constructionSite);
 		});

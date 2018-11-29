@@ -17,6 +17,7 @@ void game_state_t::load() {
 	resource_store_t::preloop();
 
 	rooms.clear();
+	construction_sites_by_id.clear();
 	creeps_by_id.clear();
 	creeps_by_name.clear();
 	dropped_resources_by_id.clear();
@@ -24,6 +25,7 @@ void game_state_t::load() {
 	structures_by_id.clear();
 	tombstones_by_id.clear();
 
+	construction_sites.clear();
 	creeps.clear();
 	dropped_resources.clear();
 	sources.clear();
@@ -32,6 +34,19 @@ void game_state_t::load() {
 	EM_ASM({
 		Module.screeps.object.writeGame(Module, $0);
 	}, this);
+}
+
+construction_site_t* game_state_t::construction_site_by_id(const id_t& id) {
+	return const_cast<construction_site_t*>(const_cast<const game_state_t*>(this)->construction_site_by_id(id));
+}
+
+const construction_site_t* game_state_t::construction_site_by_id(const id_t& id) const {
+	auto ii = construction_sites_by_id.find(id);
+	if (ii == construction_sites_by_id.end()) {
+		return nullptr;
+	} else {
+		return ii->second;
+	}
 }
 
 creep_t* game_state_t::creep_by_name(const creep_t::name_t& name) {
@@ -144,6 +159,9 @@ void game_state_t::flush_game(game_state_t* game) {
 	game->structures_by_id.reserve(game->structures.size());
 	game->tombstones_by_id.reserve(game->tombstones.size());
 	for (auto& room : game->rooms) {
+		for (auto& construction_site : room.second.construction_sites) {
+			game->construction_sites_by_id.emplace(construction_site.id, &construction_site);
+		}
 		for (auto& creep : room.second.creeps) {
 			game->creeps_by_id.emplace(creep.id, &creep);
 		}

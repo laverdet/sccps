@@ -56,6 +56,8 @@ class game_state_t {
 		array_t<tombstone_t, 100> tombstones;
 
 		void load();
+		construction_site_t* construction_site_by_id(const id_t& id);
+		const construction_site_t* construction_site_by_id(const id_t& id) const;
 		creep_t* creep_by_name(const creep_t::name_t& name);
 		const creep_t* creep_by_name(const creep_t::name_t& name) const;
 		dropped_resource_t* dropped_resource_by_id(const id_t& id);
