@@ -8,6 +8,14 @@ let { flush, print } = function() {
 	let skipTick;
 	let omittedLines;
 
+	function reset() {
+		lineCount = 0;
+		lastLine = undefined;
+		lineRepeat = 0;
+		skippedCount = 0;
+		skipTick = Game.time
+	}
+
 	function printLine(stream, line) {
 		if (stream === 0) {
 			console.log(`<span style="white-space:normal">${line}</span>`);
@@ -22,20 +30,23 @@ let { flush, print } = function() {
 		console.log(`<span style="color:#ffc66d">[Line repeated <b>${count}</b> time${count > 1 ? 's' : ''}${lastTick ? ' on previous tick' : ''}]</span>`);
 	}
 
+	reset();
 	return {
 		print(stream, line) {
 			line = `${line}`;
-			if (lineCount < kMaxLinesPerTick && line === lastLine && lastStream === stream) {
-				++lineRepeat;
-				return;
-			} else if (lineRepeat > 0) {
-				if (lineRepeat === 1) {
-					printLine(stream, line);
-				} else {
-					notifyRepeat(lineRepeat, false);
+			if (lineCount < kMaxLinesPerTick) {
+				if (line === lastLine && lastStream === stream) {
+					++lineRepeat;
+					return;
+				} else if (lineRepeat > 0) {
+					if (lineRepeat === 1) {
+						printLine(stream, lastLine);
+					} else {
+						notifyRepeat(lineRepeat, false);
+					}
+					lastLine = undefined;
+					lineRepeat = 0;
 				}
-				lineRepeat = 0;
-				lastLine = undefined;
 			}
 			if (++lineCount > kMaxLinesPerTick) {
 				if (omittedLines === undefined) {
@@ -49,9 +60,9 @@ let { flush, print } = function() {
 				++skippedCount;
 			} else {
 				printLine(stream, line);
+				lastLine = line;
+				lastStream = stream;
 			}
-			lastLine = line;
-			lastStream = stream;
 		},
 
 		flush() {
@@ -72,15 +83,10 @@ let { flush, print } = function() {
 					console.log(`<span style="color:#ffc66d">[Output from current tick follows]</span>`);
 				}
 			}
-			lineCount = 0;
-			lastLine = undefined;
-			lineRepeat = 0;
-			skippedCount = 0;
-			skipTick = Game.time
+			reset();
 		}
 	};
 }();
-flush();
 
 function bufferToString(buffer) {
 	const kChunkSize = 4096;
