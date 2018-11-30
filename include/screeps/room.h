@@ -23,14 +23,14 @@ enum class color_t {
 
 struct construction_site_t : public game_object_t {
 	bool my;
-	uint32_t progress;
-	uint32_t progress_total;
+	int32_t progress;
+	int32_t progress_total;
 	structure_t::type_t type;
 };
 
 struct dropped_resource_t : public game_object_t {
 	resource_t type;
-	uint32_t amount;
+	int32_t amount;
 };
 
 struct flag_t : public game_object_t {
@@ -41,22 +41,22 @@ struct flag_t : public game_object_t {
 
 struct mineral_t : public game_object_t {
 	resource_t type;
-	uint32_t amount;
-	uint8_t density; // 1 - 4
-	uint32_t ticks_to_regeneration;
+	int32_t amount;
+	int32_t ticks_to_regeneration;
+	int32_t density; // 1 - 4
 };
 
 struct source_t : public game_object_t {
-	uint32_t energy;
-	uint32_t energy_capacity;
-	uint32_t ticks_to_regeneration;
+	int32_t energy;
+	int32_t energy_capacity;
+	int32_t ticks_to_regeneration;
 };
 
 struct tombstone_t : public game_object_t {
 	creep_t creep;
-	uint32_t death_time;
+	int32_t death_time;
 	resource_store_t store;
-	uint32_t ticks_to_decay;
+	int32_t ticks_to_decay;
 };
 
 class room_t {
@@ -65,8 +65,8 @@ class room_t {
 
 	public:
 		room_location_t location;
-		uint32_t energy_available;
-		uint32_t energy_capacity_available;
+		int32_t energy_available;
+		int32_t energy_capacity_available;
 		controller_t* controller = nullptr;
 		std::optional<mineral_t> mineral;
 		// storage_t* storage = nullptr;
@@ -82,7 +82,7 @@ class room_t {
 
 		room_t(
 			room_location_t location,
-			uint32_t energy_available, uint32_t energy_capacity_available,
+			int32_t energy_available, int32_t energy_capacity_available,
 			const mineral_t* mineral,
 			construction_site_t* construction_sites_begin, construction_site_t* construction_sites_end,
 			creep_t* creeps_begin, creep_t* creeps_end,

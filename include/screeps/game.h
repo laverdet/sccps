@@ -21,8 +21,8 @@ class game_state_t {
 		static void flush_game(game_state_t* game);
 		static void flush_room(
 			game_state_t* game,
-			uint32_t rx, uint32_t ry,
-			uint32_t energy_available, uint32_t energy_capacity_available,
+			int rx, int ry,
+			int energy_available, int energy_capacity_available,
 			void* mineral_ptr,
 			void* construction_sites_begin, void* construction_sites_end,
 			void* creeps_begin, void* creeps_end,
@@ -32,11 +32,11 @@ class game_state_t {
 			void* tombstones_begin, void* tombstones_end
 		);
 
-		static void reserve_rooms(game_state_t* game, uint32_t rooms_count);
+		static void reserve_rooms(game_state_t* game, int rooms_count);
 
 	public:
-		uint8_t gcl;
-		uint32_t time;
+		int32_t gcl;
+		int32_t time;
 
 		std::unordered_map<room_location_t, room_t> rooms;
 		std::unordered_map<id_t, construction_site_t*> construction_sites_by_id;

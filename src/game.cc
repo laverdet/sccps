@@ -180,8 +180,8 @@ void game_state_t::flush_game(game_state_t* game) {
 EMSCRIPTEN_KEEPALIVE
 void game_state_t::flush_room(
 	game_state_t* game,
-	uint32_t rx, uint32_t ry,
-	uint32_t energy_available, uint32_t energy_capacity_available,
+	int rx, int ry,
+	int energy_available, int energy_capacity_available,
 	void* mineral_ptr,
 	void* construction_sites_begin, void* construciton_sites_end,
 	void* creeps_begin, void* creeps_end,
@@ -212,7 +212,7 @@ void game_state_t::flush_room(
 }
 
 EMSCRIPTEN_KEEPALIVE
-void game_state_t::reserve_rooms(game_state_t* game, uint32_t rooms_count) {
+void game_state_t::reserve_rooms(game_state_t* game, int rooms_count) {
 	game->rooms.reserve(rooms_count);
 }
 

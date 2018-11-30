@@ -194,7 +194,6 @@ struct coord_base_t {
 		};
 	};
 	using value_type = IntegralUnion;
-	static constexpr size_t max = std::numeric_limits<IntegralUnion>::max();
 
 	constexpr coord_base_t() = default;
 	coord_base_t(memory_t& memory) {
@@ -228,7 +227,7 @@ struct coord_base_t {
 		return id > rhs.id;
 	}
 
-	constexpr uint8_t distance_to(coord_base_t that) const {
+	constexpr int distance_to(coord_base_t that) const {
 		return std::max(std::abs(xx - that.xx), std::abs(yy - that.yy));
 	}
 
@@ -294,16 +293,16 @@ struct coord_base_t {
 
 // This is replacement for `roomName` in the JS API.
 // "E0S0" -> { xx: 128, yy: 128 }
-struct room_location_t : coord_base_t<room_location_t, uint8_t, uint16_t> {
-	using coord_base_t<room_location_t, uint8_t, uint16_t>::coord_base_t;
+struct room_location_t : coord_base_t<room_location_t, uint16_t, int32_t> {
+	using coord_base_t<room_location_t, uint16_t, int32_t>::coord_base_t;
 
 	const class terrain_t& terrain() const;
 	friend std::ostream& operator<<(std::ostream& os, room_location_t that);
 };
 
 // Simple container for a location in an arbitrary room
-struct local_position_t : coord_base_t<local_position_t, int8_t, uint16_t> {
-	using coord_base_t<local_position_t, int8_t, uint16_t>::coord_base_t;
+struct local_position_t : coord_base_t<local_position_t, uint16_t, int32_t> {
+	using coord_base_t<local_position_t, uint16_t, int32_t>::coord_base_t;
 
 	friend std::ostream& operator<<(std::ostream& os, local_position_t that);
 	constexpr struct position_t in_room(room_location_t room) const;
@@ -495,7 +494,7 @@ struct local_position_t : coord_base_t<local_position_t, int8_t, uint16_t> {
 	struct all_iteratable_t {
 		struct iterator : public random_access_iterator_t<iterator> {
 			private:
-				uint16_t ii = 0;
+				int ii = 0;
 
 			public:
 				using value_type = local_position_t;
@@ -503,7 +502,7 @@ struct local_position_t : coord_base_t<local_position_t, int8_t, uint16_t> {
 				using reference = local_position_t;
 
 				constexpr iterator() = default;
-				constexpr iterator(uint16_t ii) : ii(ii) {}
+				constexpr iterator(int ii) : ii(ii) {}
 
 				constexpr local_position_t operator*() const {
 					return local_position_t(ii % 50, ii / 50);
@@ -543,12 +542,12 @@ struct local_position_t : coord_base_t<local_position_t, int8_t, uint16_t> {
 
 // This represents a position in a continuous plane of the whole world. `roomName` is implied from
 // xx and yy.
-struct position_t : coord_base_t<position_t, uint16_t, uint32_t> {
-	using coord_base = coord_base_t<position_t, uint16_t, uint32_t>;
+struct position_t : coord_base_t<position_t, uint16_t, int32_t> {
+	using coord_base = coord_base_t<position_t, uint16_t, int32_t>;
 	using coord_base::coord_base_t;
 	constexpr position_t() = default;
 	constexpr position_t(room_location_t room, local_position_t pos) : coord_base(room.xx * 50 + pos.xx, room.yy * 50 + pos.yy) {}
-	constexpr position_t(room_location_t room, uint8_t xx, uint8_t yy) : coord_base(room.xx * 50 + xx, room.yy * 50 + yy) {}
+	constexpr position_t(room_location_t room, int xx, int yy) : coord_base(room.xx * 50 + xx, room.yy * 50 + yy) {}
 
 	constexpr room_location_t room_location() const {
 		return {xx / 50, yy / 50};
@@ -617,13 +616,13 @@ class local_matrix_store_t<Type, Store, Pack, false> {
 template <typename Type, typename Store, size_t Pack>
 class local_matrix_store_t<Type, Store, Pack, true> {
 	protected:
-		static constexpr uint8_t log2(size_t value) {
+		static constexpr int log2(size_t value) {
 			return value == 1 ? 0 : (1 + log2(value >> 1));
 		}
-		static constexpr uint8_t StoreBits = sizeof(Store) << 3;
-		static constexpr uint8_t IndexShift = log2(StoreBits / Pack);
-		static constexpr uint8_t IndexMask = StoreBits / Pack - 1;
-		static constexpr uint8_t IndexBitShift = log2(Pack);
+		static constexpr int StoreBits = sizeof(Store) << 3;
+		static constexpr int IndexShift = log2(StoreBits / Pack);
+		static constexpr int IndexMask = StoreBits / Pack - 1;
+		static constexpr int IndexBitShift = log2(Pack);
 		static constexpr Store Mask = (1 << Pack) - 1;
 
 		static_assert(StoreBits >= Pack, "sizeof(Store) must be greater than or equal to pack bits");
@@ -669,11 +668,11 @@ class local_matrix_store_t<Type, Store, Pack, true> {
 			costs.fill(packed);
 		}
 
-		constexpr reference operator[](uint16_t index) {
+		constexpr reference operator[](int index) {
 			return {(index & IndexMask) << IndexBitShift, costs[index >> IndexShift]};
 		}
 
-		constexpr const_reference operator[](uint16_t index) const {
+		constexpr const_reference operator[](int index) const {
 			return (costs[index >> IndexShift] >> ((index & IndexMask) << IndexBitShift)) & Mask;
 		}
 

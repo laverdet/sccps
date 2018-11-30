@@ -284,7 +284,7 @@ function* initialize() {
 				let [ name, what ] = [ mod.HEAPU32[err_info >> 2], mod.HEAPU32[(err_info + 4) >> 2] ].map(function(ptr) {
 					let str = '';
 					while (true) {
-						let ch = mod.HEAP8[ptr++];
+						let ch = mod.HEAPU8[ptr++];
 						if (!ch) {
 							return str;
 						}

@@ -69,7 +69,7 @@ void room_t::init() {
 
 room_t::room_t(
 	room_location_t location,
-	uint32_t energy_available, uint32_t energy_capacity_available,
+	int energy_available, int energy_capacity_available,
 	const mineral_t* mineral,
 	construction_site_t* construction_sites_begin, construction_site_t* construction_sites_end,
 	creep_t* creeps_begin, creep_t* creeps_end,

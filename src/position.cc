@@ -6,7 +6,8 @@
 namespace screeps {
 
 const terrain_t& room_location_t::terrain() const {
-	static terrain_t* terrain_map[room_location_t::max]{nullptr};
+	static terrain_t* terrain_map[256 * 256]{nullptr};
+	int id = xx * 256 + yy;
 	if (terrain_map[id] == nullptr) {
 		terrain_map[id] = new terrain_t(*this);
 	}

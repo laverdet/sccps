@@ -33,7 +33,7 @@ std::ostream& operator<<(std::ostream& os, resource_t type);
 // will reference an external location if more resources are stored.
 struct resource_store_t {
 	public:
-		using value_type = uint32_t;
+		using value_type = int32_t;
 		struct reference {
 			const resource_t type;
 			value_type& amount;

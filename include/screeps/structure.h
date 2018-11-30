@@ -40,8 +40,8 @@ struct structure_t : game_object_t {
 };
 
 struct destroyable_structure_t : structure_t {
-	uint32_t hits;
-	uint32_t hits_max;
+	int32_t hits;
+	int32_t hits_max;
 };
 
 struct owned_structure_t : destroyable_structure_t {
@@ -49,21 +49,21 @@ struct owned_structure_t : destroyable_structure_t {
 };
 
 struct controller_t : structure_t {
-	uint32_t level;
-	uint32_t progress;
-	uint32_t progress_total;
-	uint32_t ticks_to_downgrade;
-	uint32_t upgrade_blocked;
+	int32_t level;
+	int32_t progress;
+	int32_t progress_total;
+	int32_t ticks_to_downgrade;
+	int32_t upgrade_blocked;
 };
 
 struct extension_t : owned_structure_t {
-	uint32_t energy;
-	uint32_t energy_capacity;
+	int32_t energy;
+	int32_t energy_capacity;
 };
 
 struct spawn_t : owned_structure_t {
-	uint32_t energy;
-	uint32_t energy_capacity;
+	int32_t energy;
+	int32_t energy_capacity;
 
 	int spawn_creep(const creep_body_t& body, const std::string& name) const;
 };

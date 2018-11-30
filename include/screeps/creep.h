@@ -29,26 +29,25 @@ struct creep_bodypart_t {
 
 struct creep_active_bodypart_t {
 	const creep_bodypart_t& part;
-	uint8_t hits;
+	int hits;
 	creep_active_bodypart_t() = default;
-	creep_active_bodypart_t(const creep_bodypart_t& part, uint8_t hits) : part(part), hits(hits) {}
+	creep_active_bodypart_t(const creep_bodypart_t& part, int hits) : part(part), hits(hits) {}
 };
 
 struct creep_t : game_object_t {
 	using name_t = string_t<20>;
-
-	array_t<creep_bodypart_t, kMaxCreepSize> body;
+	int32_t carry_capacity;
+	int32_t fatigue;
+	int32_t hits;
+	int32_t hits_max;
+	int32_t ticksToLive;
 	resource_store_t carry;
-	uint32_t carry_capacity;
-	uint32_t fatigue;
-	uint32_t hits;
-	uint32_t hits_max;
-	bool my;
 	name_t name;
+	array_t<creep_bodypart_t, kMaxCreepSize> body;
 	// owner
 	// saying
 	bool spawning;
-	uint32_t ticksToLive;
+	bool my;
 
 	int build(const game_object_t& target) const;
 	int cancel_order(const char* method) const;

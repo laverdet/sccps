@@ -301,14 +301,14 @@ const that = module.exports = {
 		}
 
 		// Flush room structures
-		env.__ZN7screeps12game_state_t13reserve_roomsEPS0_j(ptr, flushes.length);
+		env.__ZN7screeps12game_state_t13reserve_roomsEPS0_i(ptr, flushes.length);
 		for (let ii = flushes.length - 1; ii >= 0; --ii) {
-			env.__ZN7screeps12game_state_t10flush_roomEPS0_jjjjPvS2_S2_S2_S2_S2_S2_S2_S2_S2_S2_S2_S2_.apply(env, flushes[ii]);
+			env.__ZN7screeps12game_state_t10flush_roomEPS0_iiiiPvS2_S2_S2_S2_S2_S2_S2_S2_S2_S2_S2_S2_.apply(env, flushes[ii]);
 		}
 
 		// Flush game
-		env.HEAPU8[(ptr + gameGcl) >> 0] = Game.gcl;
-		env.HEAPU32[(ptr + gameTime) >> 2] = Game.time;
+		env.HEAP32[(ptr + gameGcl) >> 2] = Game.gcl;
+		env.HEAP32[(ptr + gameTime) >> 2] = Game.time;
 		env.__ZN7screeps12game_state_t10flush_gameEPS0_(ptr);
 	},
 
@@ -328,78 +328,78 @@ const that = module.exports = {
 
 	writeConstructionSite(env, ptr, constructionSite) {
 		that.writeGameObject(env, ptr, constructionSite);
-		env.HEAPU8[(ptr + constructionSiteMy) >> 0] = constructionSite.my ? 1 : 0;
-		env.HEAPU32[(ptr + constructionSiteProgress) >> 2] = constructionSite.progress;
-		env.HEAPU32[(ptr + constructionSiteProgressTotal) >> 2] = constructionSite.progressTotal;
-		env.HEAPU32[(ptr + constructionSiteType) >> 2] = structureTypeEnum.get(constructionSite.structureType);
+		env.HEAP8[(ptr + constructionSiteMy) >> 0] = constructionSite.my ? 1 : 0;
+		env.HEAP32[(ptr + constructionSiteProgress) >> 2] = constructionSite.progress;
+		env.HEAP32[(ptr + constructionSiteProgressTotal) >> 2] = constructionSite.progressTotal;
+		env.HEAP32[(ptr + constructionSiteType) >> 2] = structureTypeEnum.get(constructionSite.structureType);
 	},
 
 	writeCreep(env, ptr, creep) {
 		that.writeGameObject(env, ptr, creep);
 		that.writeResourceStore(env, ptr + creepCarry, creep.carry);
 		ArrayLib.write(env, ptr + creepBody, creepBodyPartSizeof, 50, creep.body, function(env, ptr, part) {
-			env.HEAPU32[(ptr + creepBodyPartBoost) >> 2] = resourceEnum.get(part.boost);
-			env.HEAPU32[(ptr + creepBodyPartType) >> 2] = bodyPartEnum.get(part.type);
+			env.HEAP32[(ptr + creepBodyPartBoost) >> 2] = resourceEnum.get(part.boost);
+			env.HEAP32[(ptr + creepBodyPartType) >> 2] = bodyPartEnum.get(part.type);
 		});
-		env.HEAPU32[(ptr + creepCarryCapacity) >> 2] = creep.carryCapacity;
-		env.HEAPU32[(ptr + creepFatigue) >> 2] = creep.fatigue;
-		env.HEAPU32[(ptr + creepHits) >> 2] = creep.hits;
-		env.HEAPU32[(ptr + creepHitsMax) >> 2] = creep.hitsMax;
+		env.HEAP32[(ptr + creepCarryCapacity) >> 2] = creep.carryCapacity;
+		env.HEAP32[(ptr + creepFatigue) >> 2] = creep.fatigue;
+		env.HEAP32[(ptr + creepHits) >> 2] = creep.hits;
+		env.HEAP32[(ptr + creepHitsMax) >> 2] = creep.hitsMax;
 		env.HEAP8[(ptr + creepMy) >> 0] = creep.my ? 1 : 0;
 		if (creep.my) {
 			StringLib.writeOneByteString(env, ptr + creepName, creep.name);
 		} else {
-			env.HEAPU32[(ptr + creepName) >> 2] = 0;
+			env.HEAP32[(ptr + creepName) >> 2] = 0;
 		}
 		env.HEAP8[(ptr + creepSpawning) >> 0] = creep.spawning ? 1 : 0;
-		env.HEAPU32[(ptr + creepTicksToLive) >> 2] = creep.ticksToLive;
+		env.HEAP32[(ptr + creepTicksToLive) >> 2] = creep.ticksToLive;
 	},
 
 	writeDroppedResource(env, ptr, droppedResource) {
 		that.writeGameObject(env, ptr, droppedResource);
-		env.HEAPU32[(ptr + droppedResourceAmount) >> 2] = droppedResource.amount;
-		env.HEAPU32[(ptr + droppedResourceType) >> 2] = resourceEnum.get(droppedResource.resourceType);
+		env.HEAP32[(ptr + droppedResourceAmount) >> 2] = droppedResource.amount;
+		env.HEAP32[(ptr + droppedResourceType) >> 2] = resourceEnum.get(droppedResource.resourceType);
 	},
 
 	writeMineral(env, ptr, mineral) {
 		that.writeGameObject(env, ptr, mineral);
-		env.HEAPU32[(ptr + mineralType) >> 2] = resourceEnum.get(mineral.mineralType);
-		env.HEAPU32[(ptr + mineralAmount) >> 2] = mineral.mineralAmount;
-		env.HEAPU32[(ptr + mineralDensity) >> 2] = mineral.density;
-		env.HEAPU32[(ptr + mineralTicksToRegeneration) >> 2] = mineral.ticksToRegeneration;
+		env.HEAP32[(ptr + mineralType) >> 2] = resourceEnum.get(mineral.mineralType);
+		env.HEAP32[(ptr + mineralAmount) >> 2] = mineral.mineralAmount;
+		env.HEAP32[(ptr + mineralDensity) >> 2] = mineral.density;
+		env.HEAP32[(ptr + mineralTicksToRegeneration) >> 2] = mineral.ticksToRegeneration;
 	},
 
 	writeResourceStore(env, ptr, store) {
 		let keys = Object.keys(store);
 		if (keys.length == 0) {
-			env.HEAPU32[ptr >> 2] = 0; // extended
-			env.HEAPU32[(ptr + 8) >> 2] = 0; // single_amount
+			env.HEAP32[ptr >> 2] = 0; // extended
+			env.HEAP32[(ptr + 8) >> 2] = 0; // single_amount
 		} else if (keys.length == 1) {
-			env.HEAPU32[ptr >> 2] = 0; // extended
+			env.HEAP32[ptr >> 2] = 0; // extended
 			let type = keys[0];
-			env.HEAPU32[(ptr + 4) >> 2] = resourceEnum.get(type) | 0; // single_type
-			env.HEAPU32[(ptr + 8) >> 2] = store[type] | 0; // single_amount
+			env.HEAP32[(ptr + 4) >> 2] = resourceEnum.get(type) | 0; // single_type
+			env.HEAP32[(ptr + 8) >> 2] = store[type] | 0; // single_amount
 		} else {
 			let extended = ArrayLib.push(env, extendedResourceStorePtr, extendedResourceStoreSizeof, 100);
-			env.HEAPU32.fill(extended >> 2, (extended + extendedResourceStoreSizeof) >> 2, 0);
-			env.HEAPU32[ptr >> 2] = extended | 0;
+			env.HEAP32.fill(extended >> 2, (extended + extendedResourceStoreSizeof) >> 2, 0);
+			env.HEAP32[ptr >> 2] = extended | 0;
 			for (let ii = keys.length - 1; ii >= 0; --ii) {
 				let key = keys[ii];
-				env.HEAPU32[(extended + resourceEnum.get(key) * 4) >> 2] = store[key] | 0;
+				env.HEAP32[(extended + resourceEnum.get(key) * 4) >> 2] = store[key] | 0;
 			}
 		}
 	},
 
 	writeSource(env, ptr, source) {
 		that.writeGameObject(env, ptr, source);
-		env.HEAPU32[(ptr + sourceEnergy) >> 2] = source.energy;
-		env.HEAPU32[(ptr + sourceEnergyCapacity) >> 2] = source.energyCapacity;
-		env.HEAPU32[(ptr + sourceTicksToRegeneration) >> 2] = source.ticksToRegeneration;
+		env.HEAP32[(ptr + sourceEnergy) >> 2] = source.energy;
+		env.HEAP32[(ptr + sourceEnergyCapacity) >> 2] = source.energyCapacity;
+		env.HEAP32[(ptr + sourceTicksToRegeneration) >> 2] = source.ticksToRegeneration;
 	},
 
 	writeStructure(env, ptr, structure) {
 		that.writeGameObject(env, ptr, structure);
-		env.HEAPU32[(ptr + structureStructureType) >> 2] = structureTypeEnum.get(structure.structureType);
+		env.HEAP32[(ptr + structureStructureType) >> 2] = structureTypeEnum.get(structure.structureType);
 		switch (structure.structureType) {
 			case STRUCTURE_CONTROLLER:
 			case STRUCTURE_KEEPER_LAIR:
@@ -408,21 +408,21 @@ const that = module.exports = {
 				// indestrubable
 			default:
 				// Structure with hit points
-				env.HEAPU32[(ptr + structureDestroyableHits) >> 2] = structure.hits;
-				env.HEAPU32[(ptr + structureDestroyableHitsMax) >> 2] = structure.hitsMax;
+				env.HEAP32[(ptr + structureDestroyableHits) >> 2] = structure.hits;
+				env.HEAP32[(ptr + structureDestroyableHitsMax) >> 2] = structure.hitsMax;
 				if (structure.structureType === STRUCTURE_ROAD) {
 				} else if (structure.structureType === STRUCTURE_WALL) {
 				} else {
 					// Owned structure
-					env.HEAPU8[(ptr + structureOwnedMy.my) >> 0] = structure.my;
+					env.HEAP8[(ptr + structureOwnedMy.my) >> 0] = structure.my;
 					switch (structure.structureType) {
 						case STRUCTURE_EXTENSION:
-							env.HEAPU32[(ptr + structureExtensionEnergy) >> 2] = structure.energy;
-							env.HEAPU32[(ptr + structureExtensionEnergyCapacity) >> 2] = structure.energyCapacity;
+							env.HEAP32[(ptr + structureExtensionEnergy) >> 2] = structure.energy;
+							env.HEAP32[(ptr + structureExtensionEnergyCapacity) >> 2] = structure.energyCapacity;
 							break;
 						case STRUCTURE_SPAWN:
-							env.HEAPU32[(ptr + structureSpawnEnergy) >> 2] = structure.energy;
-							env.HEAPU32[(ptr + structureSpawnEnergyCapacity) >> 2] = structure.energyCapacity;
+							env.HEAP32[(ptr + structureSpawnEnergy) >> 2] = structure.energy;
+							env.HEAP32[(ptr + structureSpawnEnergyCapacity) >> 2] = structure.energyCapacity;
 							break;
 					}
 				}
@@ -432,7 +432,7 @@ const that = module.exports = {
 
 	readCreepBodyPartArray(env, ptr) {
 		return ArrayLib.map(env, ptr, 4, function(env, ptr) {
-			return bodyPartEnumReverse.get(env.HEAPU32[ptr >> 2]);
+			return bodyPartEnumReverse.get(env.HEAP32[ptr >> 2]);
 		});
 	},
 
