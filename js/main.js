@@ -119,6 +119,7 @@ global.trace = function trace(message) {
 }
 
 let asmjsArchive, buffer;
+let didExitCleanly = true;
 print(2, 'Global reset');
 function* initialize() {
 
@@ -394,12 +395,18 @@ function* initialize() {
 	// Main loop starts here
 	return function() {
 		flush();
+		if (!didExitCleanly) {
+			print(2, 'Engine is in undefined state, refusing to run loop');
+			return;
+		}
 		if (Game.cpu.limit + Game.cpu.bucket === Game.cpu.tickLimit) {
 			print(2, 'Skipping loop due to empty bucket.');
 			return;
 		}
 		try {
+			didExitCleanly = false;
 			mod.__Z4loopv();
+			didExitCleanly = true;
 		} catch (err) {
 			if (typeof err === 'number') {
 				/**
@@ -426,7 +433,7 @@ let messages;
 module.exports.loop = function() {
 	flush();
 	if (Game.cpu.limit + Game.cpu.bucket === Game.cpu.tickLimit) {
-		print(0, 'Deferring initialization due to empty bucket.');
+		print(2, 'Deferring initialization due to empty bucket.');
 		return;
 	}
 	if (messages && messages.length !== 0) {
