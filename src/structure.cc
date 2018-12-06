@@ -78,7 +78,7 @@ int spawn_t::spawn_creep(const creep_body_t& body, const std::string& name) cons
 	return EM_ASM_INT({
 		return Module.screeps.util.getObjectById(Module, $0).spawnCreep(
 			Module.screeps.object.readCreepBodyPartArray(Module, $1),
-			Module.screeps.string.readOneByteStringData(Module, $2, $3), { directions: [ RIGHT ] }
+			Module.screeps.string.readOneByteStringData(Module, $2, $3)
 		);
 	}, &this->id, &body, name.c_str(), name.length());
 }
