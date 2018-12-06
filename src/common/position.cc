@@ -1,7 +1,6 @@
 #include <screeps/constants.h>
 #include <screeps/position.h>
 #include <screeps/terrain.h>
-#include <emscripten.h>
 
 namespace screeps {
 

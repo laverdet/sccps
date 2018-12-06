@@ -46,14 +46,16 @@ endif
 
 # Object paths
 .SECONDEXPANSION:
-SCREEPS_SRCS = cpu.cc creep.cc game.cc memory.cc path-finder.cc position.cc resource.cc room.cc structure.cc terrain.cc visual.cc
+SCREEPS_EMASM_SRCS = cpu.cc creep.cc game.cc memory.cc path-finder.cc resource.cc room.cc structure.cc terrain.cc visual.cc
+SCREEPS_COMMON_SRCS = creep.cc game.cc position.cc resource.cc structure.cc visual.cc
+
 SCREEPS_RUNTIME = array.js main.js object.js position.js string.js util.js vector.js inflate.js inflate.wasm.wasm
 ifeq ($(TARGET), debug)
 ASMJS_EXTRA_RUNTIME += source-map.js
 endif
 
 # Create objects from sources
-SCREEPS_FULL_SRCS = $(addprefix $(SCREEPS_PATH)/src/emasm/,$(SCREEPS_SRCS))
+SCREEPS_FULL_SRCS = $(addprefix $(SCREEPS_PATH)/src/emasm/,$(SCREEPS_EMASM_SRCS)) $(addprefix $(SCREEPS_PATH)/src/common/,$(SCREEPS_COMMON_SRCS))
 ifeq ($(DYNAMIC_LINK), 1)
 MAIN_SRCS = $(SCREEPS_FULL_SRCS)
 DYLIB_SRCS = $(SRCS)
