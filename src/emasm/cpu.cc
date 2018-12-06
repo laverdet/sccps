@@ -1,6 +1,5 @@
 #include <screeps/cpu.h>
 #include <emscripten.h>
-#include <stdexcept>
 
 static screeps::cpu::native_heap_t heap_status;
 

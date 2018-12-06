@@ -31,7 +31,8 @@ MISSING_SYMBOLS = ___cxa_find_matching_catch ___cxa_find_matching_catch_2 ___cxa
 
 # Additional flags for debug or release
 ifeq ($(TARGET), debug)
-CXXFLAGS += -g4 -O2 -ftrapv
+CXXFLAGS += -O2 -ftrapv
+EM_CXXFLAGS += -g4
 EMFLAGS += -s ASSERTIONS=1 -g4 -O2
 MAIN_EMFLAGS += -s DEMANGLE_SUPPORT=1
 DYNAMIC_LINK = 1
@@ -48,6 +49,7 @@ endif
 .SECONDEXPANSION:
 SCREEPS_EMASM_SRCS = cpu.cc creep.cc game.cc memory.cc path-finder.cc resource.cc room.cc structure.cc terrain.cc visual.cc
 SCREEPS_COMMON_SRCS = creep.cc game.cc position.cc resource.cc structure.cc visual.cc
+SCREEPS_NATIVE_SRCS = cpu.cc creep.cc game.cc memory.cc path-finder.cc room.cc structure.cc terrain.cc visual.cc
 
 SCREEPS_RUNTIME = array.js main.js object.js position.js string.js util.js vector.js inflate.js inflate.wasm.wasm
 ifeq ($(TARGET), debug)
@@ -55,16 +57,16 @@ ASMJS_EXTRA_RUNTIME += source-map.js
 endif
 
 # Create objects from sources
-SCREEPS_FULL_SRCS = $(addprefix $(SCREEPS_PATH)/src/emasm/,$(SCREEPS_EMASM_SRCS)) $(addprefix $(SCREEPS_PATH)/src/common/,$(SCREEPS_COMMON_SRCS))
+MAIN_SRCS = $(addprefix $(SCREEPS_PATH)/src/emasm/,$(SCREEPS_EMASM_SRCS)) $(addprefix $(SCREEPS_PATH)/src/common/,$(SCREEPS_COMMON_SRCS))
+NATIVE_SRCS = $(SRCS) $(addprefix $(SCREEPS_PATH)/src/common/,$(SCREEPS_COMMON_SRCS)) $(addprefix $(SCREEPS_PATH)/src/native/,$(SCREEPS_NATIVE_SRCS))
 ifeq ($(DYNAMIC_LINK), 1)
-MAIN_SRCS = $(SCREEPS_FULL_SRCS)
 DYLIB_SRCS = $(SRCS)
 ASMJS_EMFLAGS += -s MAIN_MODULE=2 \
 	-s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$$($(TO_JSON) < $(SCREEPS_PATH)/emscripten_symbols) \
 	-s EXPORTED_FUNCTIONS=$$((cat $(DYLIB_LINKER_SYMBOLS); echo $(MISSING_SYMBOLS); egrep '[CD]1' $(DYLIB_LINKER_SYMBOLS) | perl -pe 's/([CD])1/$$1\x32/') | $(TO_JSON)) \
 	-s EXTRA_EXPORTED_RUNTIME_METHODS="['loadDynamicLibrary']"
 else
-MAIN_SRCS = $(SCREEPS_FULL_SRCS) $(SRCS)
+MAIN_SRCS += $(SRCS)
 endif
 OBJS = $(addprefix $(BUILD_PATH)/,$(patsubst %.cc,%.bc,$(MAIN_SRCS)))
 DYLIB_OBJS = $(addprefix $(BUILD_PATH)/,$(patsubst %.cc,%.bc,$(DYLIB_SRCS)))
@@ -74,6 +76,7 @@ DYLIB_WASM_FILES = $(patsubst %.bc,%.dylib.wasm.deflate,$(DYLIB_OBJS))
 DYLIB_LINKER_SYMBOLS = $(BUILD_PATH)/dylib-symbols
 OBJ_SYMBOLS = $(patsubst %.bc,%.nm,$(OBJS))
 DYLIB_SYMBOLS = $(patsubst %.bc,%.nm,$(DYLIB_OBJS))
+NATIVE_SYMBOLS = $(addprefix $(BUILD_PATH)/,$(patsubst %.cc,%.o,$(NATIVE_SRCS)))
 ASMJS_EMFLAGS += -s WASM=0 --memory-init-file 0
 WASM_EMFLAGS += -s WASM=1 -s BINARYEN_ASYNC_COMPILATION=0 -s EXPORTED_FUNCTIONS=$$(echo $(EXPORTED_FUNCTIONS) | $(TO_JSON))
 
@@ -104,7 +107,7 @@ build%/.:
 
 # Bytecode targets
 $(BUILD_PATH)/%.bc: %.cc | $$(@D)/.
-	$(CXX) -c -o $@ $< -MD $(CXXFLAGS)
+	$(EMCXX) -c -o $@ $< -MD $(CXXFLAGS) $(EM_CXXFLAGS)
 .PRECIOUS: $(BUILD_PATH)/%.bc
 
 # Dynamic library symbol exports
@@ -126,29 +129,37 @@ $(DYLIB_LINKER_SYMBOLS).marker: $$(DYLIB_SYMBOLS) | $$(@D)/.
 
 # asmjs specifics
 $(BUILD_PATH)/screeps/asmjs.js: $$(OBJS) $(DYLIB_LINKER_SYMBOLS) | $$(@D)/.
-	$(CXX) -o $@ $(OBJS) $(EMFLAGS) $(MAIN_EMFLAGS) $(ASMJS_EMFLAGS)
+	$(EMCXX) -o $@ $(OBJS) $(EMFLAGS) $(MAIN_EMFLAGS) $(ASMJS_EMFLAGS)
 $(ASMJS)/$(MODULE_NAME).wasm: $(BUILD_PATH)/screeps/asmjs.js.deflate $$(DYLIB_ASMJS_FILES) $$(DYLIB_MAP_FILES) | $$(@D)/.
 	$(MAKE_ARCHIVE) $(BUILD_PATH) $@ $^
 
 %.dylib.js: %.bc
-	$(CXX) -o $@ $^ $(EMFLAGS) $(SIDE_EMFLAGS) -s WASM=0
+	$(EMCXX) -o $@ $^ $(EMFLAGS) $(SIDE_EMFLAGS) -s WASM=0
 %.js.map: %.js ;
 .PRECIOUS: %.dylib.js %.js.map
 
 # wasm specifics
 $(BUILD_PATH)/screeps/wasm.js: $$(OBJS) $$(DYLIB_OBJS) | $$(@D)/.
-	$(CXX) -o $@ $(OBJS) $(DYLIB_OBJS) $(EMFLAGS) $(MAIN_EMFLAGS) $(WASM_EMFLAGS)
+	$(EMCXX) -o $@ $(OBJS) $(DYLIB_OBJS) $(EMFLAGS) $(MAIN_EMFLAGS) $(WASM_EMFLAGS)
 $(BUILD_PATH)/screeps/wasm.wasm: $(BUILD_PATH)/screeps/wasm.js ;
 $(WASM)/$(MODULE_NAME).wasm: $(BUILD_PATH)/screeps/wasm.js.deflate $(BUILD_PATH)/screeps/wasm.wasm.deflate | $$(@D)/.
 	$(MAKE_ARCHIVE) $(BUILD_PATH) $@ $^
 
 %.dylib.wasm: %.bc
-	$(CXX) -o $@ $^ $(EMFLAGS) $(SIDE_EMFLAGS) -s WASM=1
+	$(EMCXX) -o $@ $^ $(EMFLAGS) $(SIDE_EMFLAGS) -s WASM=1
 .PRECIOUS: %.dylib.wasm
 
 # Copy screeps runtime JS files output
 $(ASMJS)/% $(WASM)/%: $(SCREEPS_PATH)/js/% | $$(@D)/.
 	cp $< $@
+
+# native specifics
+$(BUILD_PATH)/%.o: %.cc | $$(@D)/.
+	$(CXX) -c -o $@ $< -MD $(CXXFLAGS)
+.PRECIOUS: $(BUILD_PATH)/%.o
+
+cli-test: $$(NATIVE_SYMBOLS)
+	$(CXX) -o $@ $^
 
 # Cleanups
 clean:

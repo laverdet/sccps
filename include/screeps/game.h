@@ -39,13 +39,13 @@ class game_state_t {
 		int32_t time;
 
 		std::unordered_map<room_location_t, room_t> rooms;
-		std::unordered_map<id_t, construction_site_t*> construction_sites_by_id;
-		std::unordered_map<id_t, creep_t*> creeps_by_id;
+		std::unordered_map<sid_t, construction_site_t*> construction_sites_by_id;
+		std::unordered_map<sid_t, creep_t*> creeps_by_id;
 		std::unordered_map<creep_t::name_t, creep_t*> creeps_by_name;
-		std::unordered_map<id_t, dropped_resource_t*> dropped_resources_by_id;
-		std::unordered_map<id_t, source_t*> sources_by_id;
-		std::unordered_map<id_t, structure_union_t*> structures_by_id;
-		std::unordered_map<id_t, tombstone_t*> tombstones_by_id;
+		std::unordered_map<sid_t, dropped_resource_t*> dropped_resources_by_id;
+		std::unordered_map<sid_t, source_t*> sources_by_id;
+		std::unordered_map<sid_t, structure_union_t*> structures_by_id;
+		std::unordered_map<sid_t, tombstone_t*> tombstones_by_id;
 
 		array_t<construction_site_t, 100> construction_sites;
 		array_t<creep_t, kMaximumCreeps> creeps;
@@ -56,16 +56,16 @@ class game_state_t {
 		array_t<tombstone_t, 100> tombstones;
 
 		void load();
-		construction_site_t* construction_site_by_id(const id_t& id);
-		const construction_site_t* construction_site_by_id(const id_t& id) const;
+		construction_site_t* construction_site_by_id(const sid_t& id);
+		const construction_site_t* construction_site_by_id(const sid_t& id) const;
 		creep_t* creep_by_name(const creep_t::name_t& name);
 		const creep_t* creep_by_name(const creep_t::name_t& name) const;
-		dropped_resource_t* dropped_resource_by_id(const id_t& id);
-		const dropped_resource_t* dropped_resource_by_id(const id_t& id) const;
-		source_t* source_by_id(const id_t& id);
-		const source_t* source_by_id(const id_t& id) const;
-		structure_union_t* structure_by_id(const id_t& id);
-		const structure_union_t* structure_by_id(const id_t& id) const;
+		dropped_resource_t* dropped_resource_by_id(const sid_t& id);
+		const dropped_resource_t* dropped_resource_by_id(const sid_t& id) const;
+		source_t* source_by_id(const sid_t& id);
+		const source_t* source_by_id(const sid_t& id) const;
+		structure_union_t* structure_by_id(const sid_t& id);
+		const structure_union_t* structure_by_id(const sid_t& id) const;
 };
 
 void* exception_what(void* ptr);

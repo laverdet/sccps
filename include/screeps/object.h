@@ -11,9 +11,9 @@ struct room_object_t {
 	position_t pos;
 };
 
-using id_t = string_t<kMaximumIdLength>;
+using sid_t = string_t<kMaximumIdLength>;
 struct game_object_t : room_object_t {
-	id_t id;
+	sid_t id;
 	friend std::ostream& operator<<(std::ostream& os, const game_object_t& that);
 };
 

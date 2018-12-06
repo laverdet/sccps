@@ -72,7 +72,7 @@ struct spawn_t : owned_structure_t {
 union structure_union_t {
 	struct {
 		position_t pos;
-		id_t id;
+		sid_t id;
 		structure_t::type_t type;
 	};
 
