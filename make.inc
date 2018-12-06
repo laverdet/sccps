@@ -53,7 +53,7 @@ ASMJS_EXTRA_RUNTIME += source-map.js
 endif
 
 # Create objects from sources
-SCREEPS_FULL_SRCS = $(addprefix $(SCREEPS_PATH)/src/,$(SCREEPS_SRCS))
+SCREEPS_FULL_SRCS = $(addprefix $(SCREEPS_PATH)/src/emasm/,$(SCREEPS_SRCS))
 ifeq ($(DYNAMIC_LINK), 1)
 MAIN_SRCS = $(SCREEPS_FULL_SRCS)
 DYLIB_SRCS = $(SRCS)
