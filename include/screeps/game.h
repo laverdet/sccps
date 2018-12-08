@@ -35,6 +35,12 @@ class game_state_t {
 		static void reserve_rooms(game_state_t* game, int rooms_count);
 
 	public:
+		template <class Memory>
+		void serialize(Memory& memory) {
+			memory & gcl & time;
+			memory & rooms;
+		}
+
 		int32_t gcl;
 		int32_t time;
 

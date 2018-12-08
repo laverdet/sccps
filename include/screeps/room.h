@@ -92,6 +92,12 @@ class room_t {
 			tombstone_t* tombstones_begin, tombstone_t* tombstones_end
 		);
 
+		template <class Memory>
+		void serialize(Memory& memory) {
+			memory & location;
+			memory & energy_available & energy_capacity_available;
+		}
+
 		const terrain_t& terrain() const {
 			return location.terrain();
 		}

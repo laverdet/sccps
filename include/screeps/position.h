@@ -1,6 +1,5 @@
 #pragma once
 #include "./iterator.h"
-#include "./memory.h"
 #include <array>
 #include <iostream>
 #include <limits>
@@ -196,19 +195,11 @@ struct coord_base_t {
 	using value_type = IntegralUnion;
 
 	constexpr coord_base_t() = default;
-	coord_base_t(memory_t& memory) {
-		memory <<*this;
-	}
 	constexpr coord_base_t(int xx, int yy) : xx(xx), yy(yy) {}
 
-	friend memory_t& operator<<(memory_t& memory, coord_base_t that) {
-		memory <<that.xx <<that.yy;
-		return memory;
-	}
-
-	friend memory_t& operator>>(memory_t& memory, coord_base_t& that) {
-		memory >>that.xx >>that.yy;
-		return memory;
+	template <class Memory>
+	void serialize(Memory& memory) {
+		memory & id;
 	}
 
 	constexpr bool operator==(coord_base_t rhs) const {
@@ -701,6 +692,12 @@ class local_matrix_t : public local_matrix_store_t<Type, Store, Pack> {
 		using local_matrix_store_t<Type, Store, Pack>::operator[];
 		using reference = typename local_matrix_store_t<Type, Store, Pack>::reference;
 		using const_reference = typename local_matrix_store_t<Type, Store, Pack>::const_reference;
+
+		template <class Memory>
+		void serialize(Memory& memory) {
+			uint8_t* data = reinterpret_cast<uint8_t*>(this->costs.data());
+			memory.copy(data, reinterpret_cast<uint8_t*>(this->costs.data() + this->costs.size()) - data);
+		}
 
 		constexpr reference get(int xx, int yy) {
 			return (*this)[xx * 50 + yy];

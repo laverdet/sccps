@@ -3,6 +3,7 @@
 
 namespace screeps {
 
+/*
 bool memory_t::load() {
 	EM_ASM({
 		Module.screeps.string.writeOneByteStringData(Module, $0, RawMemory.get());
@@ -22,5 +23,6 @@ void memory_t::save() const {
 		Module.screeps.string.readOneByteStringData(Module, $0, $1);
 	}, memory.data(), pos - memory.data());
 }
+*/
 
 } // namespace screeps
