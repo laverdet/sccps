@@ -1,4 +1,5 @@
 #include <screeps/game.h>
+#include <iostream>
 
 namespace screeps {
 

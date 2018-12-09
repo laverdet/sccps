@@ -1,5 +1,5 @@
 #pragma once
-#include <iostream>
+#include <iosfwd>
 #include "./constants.h"
 #include "./position.h"
 #include "./string.h"

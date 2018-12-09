@@ -4,7 +4,7 @@
 #include "./position.h"
 #include "./object.h"
 #include "./resource.h"
-#include <iostream>
+#include <iosfwd>
 #include <vector>
 
 namespace screeps {

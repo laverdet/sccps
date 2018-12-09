@@ -1,4 +1,5 @@
 #include <screeps/creep.h>
+#include <iostream>
 
 namespace screeps {
 

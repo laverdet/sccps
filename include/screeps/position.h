@@ -1,7 +1,7 @@
 #pragma once
 #include "./iterator.h"
 #include <array>
-#include <iostream>
+#include <iosfwd>
 #include <limits>
 #include <unordered_map>
 
