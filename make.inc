@@ -13,21 +13,19 @@ MAKE_ARCHIVE = $(SCREEPS_PATH)/make-archive.js
 MERGE_SYMBOLS = $(SCREEPS_PATH)/merge-symbols.js
 TO_JSON = $(SCREEPS_PATH)/to-json.js
 STRIP_MAP = $(SCREEPS_PATH)/strip-map.js
-NOTHING =
-SPACE = $(NOTHING) $(NOTHING)
-COMMA = ,
+NOTHING :=
+SPACE := $(NOTHING) $(NOTHING)
+COMMA := ,
 
 # Default compiler flags
-CXXFLAGS += \
-	-std=c++1z \
+CXXFLAGS += -std=c++17 \
 	-Wall -Wextra -Wno-invalid-offsetof \
-	-isystem $(SCREEPS_PATH)/include \
-	-I.
+	-isystem $(SCREEPS_PATH)/include -I.
 EMFLAGS += -s STRICT=1 -s DISABLE_EXCEPTION_CATCHING=0 -s ABORTING_MALLOC=0
-MAIN_EMFLAGS += -s ENVIRONMENT=shell -s NO_FILESYSTEM=1 -s TOTAL_MEMORY=201326592
+MAIN_EMFLAGS += -s MAIN_MODULE=2 -s ENVIRONMENT=shell -s NO_FILESYSTEM=1 -s TOTAL_MEMORY=201326592
 SIDE_EMFLAGS += -s SIDE_MODULE=1 -s EXPORT_ALL=1
 EXPORTED_FUNCTIONS += __Z4loopv
-MISSING_SYMBOLS = ___cxa_find_matching_catch ___cxa_find_matching_catch_2 ___cxa_find_matching_catch_3 ___resumeException ___errno_location
+MISSING_SYMBOLS := ___cxa_find_matching_catch ___cxa_find_matching_catch_2 ___cxa_find_matching_catch_3 ___resumeException ___errno_location
 
 # Additional flags for debug or release
 ifeq ($(TARGET), debug)
@@ -47,36 +45,30 @@ endif
 
 # Object paths
 .SECONDEXPANSION:
-SCREEPS_EMASM_SRCS = cpu.cc creep.cc game.cc memory.cc path-finder.cc resource.cc room.cc structure.cc terrain.cc visual.cc
-SCREEPS_COMMON_SRCS = creep.cc game.cc position.cc resource.cc room.cc structure.cc visual.cc
-SCREEPS_NATIVE_SRCS = cpu.cc creep.cc game.cc memory.cc path-finder.cc room.cc structure.cc terrain.cc visual.cc
-
-SCREEPS_RUNTIME = array.js main.js object.js position.js string.js util.js vector.js inflate.js inflate.wasm.wasm
-ifeq ($(TARGET), debug)
-ASMJS_EXTRA_RUNTIME += source-map.js
-endif
+SCREEPS_SRCS := cpu.cc creep.cc game.cc memory.cc path-finder.cc position.cc resource.cc room.cc structure.cc terrain.cc visual.cc
+SCREEPS_RUNTIME := array.js main.js object.js position.js string.js util.js vector.js inflate.js inflate.wasm.wasm
 
 # Create objects from sources
-MAIN_SRCS = $(addprefix $(SCREEPS_PATH)/src/emasm/,$(SCREEPS_EMASM_SRCS)) $(addprefix $(SCREEPS_PATH)/src/common/,$(SCREEPS_COMMON_SRCS))
-NATIVE_SRCS = $(SRCS) $(addprefix $(SCREEPS_PATH)/src/common/,$(SCREEPS_COMMON_SRCS)) $(addprefix $(SCREEPS_PATH)/src/native/,$(SCREEPS_NATIVE_SRCS))
+COMMON_SRCS = $(addprefix $(SCREEPS_PATH)/src/common/,$(SCREEPS_SRCS))
+EMASM_SRCS = $(COMMON_SRCS) $(addprefix $(SCREEPS_PATH)/src/emasm/,$(SCREEPS_SRCS))
+NATIVE_SRCS = $(COMMON_SRCS) $(addprefix $(SCREEPS_PATH)/src/native/,$(SCREEPS_SRCS))
 ifeq ($(DYNAMIC_LINK), 1)
 DYLIB_SRCS = $(SRCS)
-ASMJS_EMFLAGS += -s MAIN_MODULE=2 \
-	-s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$$($(TO_JSON) < $(SCREEPS_PATH)/emscripten_symbols) \
+ASMJS_EMFLAGS += -s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$$($(TO_JSON) < $(SCREEPS_PATH)/emscripten_symbols) \
 	-s EXPORTED_FUNCTIONS=$$((cat $(DYLIB_LINKER_SYMBOLS); echo $(MISSING_SYMBOLS); egrep '[CD]1' $(DYLIB_LINKER_SYMBOLS) | perl -pe 's/([CD])1/$$1\x32/') | $(TO_JSON)) \
 	-s EXTRA_EXPORTED_RUNTIME_METHODS="['loadDynamicLibrary']"
 else
-MAIN_SRCS += $(SRCS)
+EMASM_SRCS += $(SRCS)
 endif
-OBJS = $(addprefix $(BUILD_PATH)/,$(patsubst %.cc,%.bc,$(MAIN_SRCS)))
+OBJS = $(addprefix $(BUILD_PATH)/,$(patsubst %.cc,%.bc,$(EMASM_SRCS)))
+NATIVE_OBJS = $(addprefix $(BUILD_PATH)/,$(patsubst %.cc,%.o,$(NATIVE_SRCS)))
+NATIVE_USER_OBJS = $(addprefix $(BUILD_PATH)/,$(patsubst %.cc,%.o,$(SRCS)))
 DYLIB_OBJS = $(addprefix $(BUILD_PATH)/,$(patsubst %.cc,%.bc,$(DYLIB_SRCS)))
 DYLIB_ASMJS_FILES = $(patsubst %.bc,%.dylib.js.deflate,$(DYLIB_OBJS))
 DYLIB_MAP_FILES = $(patsubst %.bc,%.dylib.map.deflate,$(DYLIB_OBJS))
 DYLIB_WASM_FILES = $(patsubst %.bc,%.dylib.wasm.deflate,$(DYLIB_OBJS))
 DYLIB_LINKER_SYMBOLS = $(BUILD_PATH)/dylib-symbols
-OBJ_SYMBOLS = $(patsubst %.bc,%.nm,$(OBJS))
 DYLIB_SYMBOLS = $(patsubst %.bc,%.nm,$(DYLIB_OBJS))
-NATIVE_SYMBOLS = $(addprefix $(BUILD_PATH)/,$(patsubst %.cc,%.o,$(NATIVE_SRCS)))
 ASMJS_EMFLAGS += -s WASM=0 --memory-init-file 0
 WASM_EMFLAGS += -s WASM=1 -s BINARYEN_ASYNC_COMPILATION=0 -s EXPORTED_FUNCTIONS=$$(echo $(EXPORTED_FUNCTIONS) | $(TO_JSON))
 
@@ -89,7 +81,7 @@ runtime-wasm: $(addprefix $(WASM)/,$(SCREEPS_RUNTIME))
 
 # Compress asmjs in debug builds, also include source map
 ifeq ($(TARGET), debug)
-asmjs: $(ASMJS)/$(MODULE_NAME).wasm $(addprefix $(ASMJS)/,$(ASMJS_EXTRA_RUNTIME))
+asmjs: $(ASMJS)/$(MODULE_NAME).wasm $(ASMJS)/source-map.js
 else
 asmjs: $(ASMJS)/$(MODULE_NAME).asmjs.js
 endif
@@ -156,9 +148,11 @@ $(ASMJS)/% $(WASM)/%: $(SCREEPS_PATH)/js/% | $$(@D)/.
 # native specifics
 $(BUILD_PATH)/%.o: %.cc | $$(@D)/.
 	$(CXX) -c -o $@ $< -MD $(CXXFLAGS)
+$(BUILD_PATH)/screeps.ar: $$(NATIVE_OBJS)
+	$(AR) rcs $@ $^
 .PRECIOUS: $(BUILD_PATH)/%.o
 
-cli-test: $$(NATIVE_SYMBOLS)
+$(MODULE_NAME): $(BUILD_PATH)/screeps.ar $$(NATIVE_USER_OBJS)
 	$(CXX) -o $@ $^
 
 # Cleanups
