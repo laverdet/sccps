@@ -5,10 +5,7 @@ const that = module.exports = {
 		if (capacity < array.length) {
 			throw new Error('Array overflow');
 		}
-		let offset = ptr + 4;
-		for (let ii = array.length - 1; ii >= 0; --ii) {
-			fn(env, offset + ii * sizeof, array[ii]);
-		}
+		that.writeData(env, ptr + 4, sizeof, array, fn);
 		env.HEAPU32[ptr >> 2] = array.length;
 	},
 
@@ -18,12 +15,16 @@ const that = module.exports = {
 		if (capacity < length + array.length) {
 			throw new Error('Array overflow');
 		}
-		let offset = ptr + 4 + length * sizeof;
-		for (let ii = array.length - 1; ii >= 0; --ii) {
-			fn(env, offset + ii * sizeof, array[ii]);
-		}
+		that.writeData(env, ptr + 4 + length * sizeof, sizeof, array, fn);
 		env.HEAPU32[ptr >> 2] = length + array.length;
 		return offset + array.length * sizeof;
+	},
+
+	// Plain data writer, doesn't update a `size` value
+	writeData(env, ptr, sizeof, array, fn) {
+		for (let ii = array.length - 1; ii >= 0; --ii) {
+			fn(env, ptr + ii * sizeof, array[ii]);
+		}
 	},
 
 	map(env, ptr, sizeof, fn) {

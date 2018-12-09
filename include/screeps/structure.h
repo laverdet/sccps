@@ -76,6 +76,15 @@ union structure_union_t {
 		structure_t::type_t type;
 	};
 
+	destroyable_structure_t destroyable;
+	owned_structure_t owned;
+
+	controller_t controller;
+	extension_t extension;
+	spawn_t spawn;
+
+	structure_union_t() {}
+
 	bool is_owned() const {
 		switch (type) {
 			case structure_t::extension:
@@ -104,13 +113,6 @@ union structure_union_t {
 	operator const game_object_t&() const {
 		return *reinterpret_cast<const game_object_t*>(this);
 	}
-
-	destroyable_structure_t destroyable;
-	owned_structure_t owned;
-
-	controller_t controller;
-	extension_t extension;
-	spawn_t spawn;
 };
 
 } // namespace screeps

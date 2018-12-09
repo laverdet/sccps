@@ -105,8 +105,6 @@ struct resource_store_t {
 		static void init();
 		static void preloop();
 
-		resource_store_t() : extended(nullptr), single_type(resource_t::energy), single_amount(0) {}
-
 		value_type& operator[](resource_t type) {
 			if (extended == nullptr) {
 				if (single_amount == 0) {

@@ -6,8 +6,8 @@ const util = require('util');
 const kWorldSize = 255;
 
 // game_state_t
-let gameConstructionSites, gameCreeps, gameDroppedResources, gameFlags, gameSources, gameStructures, gameTombstones;
-let gameGcl, gameMineralHole, gameTime;
+let gameConstructionSites, gameFlags, gameRooms;
+let gameGcl, gameTime;
 
 // resource_store_t
 const [ resourceEnum, resourceReverseEnum ] = util.enumToMap([
@@ -106,6 +106,11 @@ const [ colorEnum, colorEnumReverse ] = util.enumToMap([
 let mineralSizeof;
 let mineralAmount, mineralDensity, mineralType, mineralTicksToRegeneration;
 
+// room_t
+let roomLocation;
+let roomConstructionSites, roomCreeps, roomDroppedResources, roomSources, roomStructures, roomTombstones;
+let roomMineral, roomMineralHolder;
+
 // source_t
 let sourceSizeof;
 let sourceEnergy, sourceEnergyCapacity, sourceTicksToRegeneration;
@@ -142,15 +147,10 @@ let structureSpawnEnergy, structureSpawnEnergyCapacity;
 const that = module.exports = {
 	initGameLayout(layout) {
 		gameConstructionSites = layout.constructionSites;
-		gameCreeps = layout.creeps;
-		gameDroppedResources = layout.droppedResources;
+		gameRooms = layout.rooms;
 		gameFlags = layout.flags;
-		gameSources = layout.sources;
-		gameStructures = layout.structures;
-		gameTombstones = layout.tombstones;
 
 		gameGcl = layout.gcl;
-		gameMineralHole = layout.mineralHole;
 		gameTime = layout.time;
 	},
 
@@ -197,6 +197,17 @@ const that = module.exports = {
 		extendedResourceStorePtr = ptr;
 	},
 
+	initRoomLayout(layout) {
+		roomLocation = layout.location;
+		roomCreeps = layout.creeps;
+		roomDroppedResources = layout.droppedResources;
+		roomSources = layout.sources;
+		roomStructures = layout.structures;
+		roomTombstones = layout.tombstones;
+		roomMineral = layout.mineral;
+		roomMineralHolder = layout.mineralHolder;
+	},
+
 	initSourceLayout(layout) {
 		sourceSizeof = layout.sizeof;
 		sourceEnergy = layout.energy;
@@ -217,105 +228,117 @@ const that = module.exports = {
 	},
 
 	writeGame(env, ptr) {
-		let rooms = Object.keys(Game.rooms);
-		let flushes = Array.apply(null, Array(rooms.length));
-		let creepsBegin = ptr + gameCreeps + 4;
-		let droppedResourcesBegin = ptr + gameDroppedResources + 4;
-		let sourcesBegin = ptr + gameSources + 4;
-		let structuresBegin = ptr + gameStructures + 4;
-		let creepsCount = 0, droppedResourcesCount = 0, sourcesCount = 0, structuresCount = 0;
-
-		// Write construction sites
-		let constructionSiteIds = Object.keys(Game.constructionSites);
-		constructionSiteIds.sort(function(left, right) {
-			let leftRoom = Game.constructionSites[left].pos.roomName;
-			let rightRoom = Game.constructionSites[right].pos.roomName;
-			if (leftRoom === rightRoom) {
-				return 0;
-			} else if (leftRoom < rightRoom) {
-				return -1;
-			} else {
-				return 1;
-			}
-		});
-		let constructionSitesFirstByRoom = Object.create(null);
-		let constructionSitesLastByRoom = Object.create(null);
-		ArrayLib.write(env, ptr + gameConstructionSites, constructionSiteSizeof, 100, constructionSiteIds, function(env, offset, id) {
-			let constructionSite = Game.constructionSites[id];
-			let roomName = constructionSite.pos.roomName;
-			if (constructionSitesFirstByRoom[roomName] === undefined) {
-				constructionSitesFirstByRoom[roomName] = offset;
-				constructionSitesLastByRoom[roomName] = offset + constructionSiteSizeof;
-			} else {
-				constructionSitesFirstByRoom[roomName] = Math.min(constructionSitesFirstByRoom[roomName], offset);
-				constructionSitesLastByRoom[roomName] = Math.max(constructionSitesLastByRoom[roomName], offset + constructionSiteSizeof);
-			}
-			that.writeConstructionSite(env, offset, constructionSite);
-		});
-
-		for (let ii = rooms.length - 1; ii >= 0; --ii) {
-			// Get initial array state
-			let roomName = rooms[ii];
-			let room = Game.rooms[roomName];
-
-			// Push room to arrays
-			let creeps = room.find(FIND_CREEPS);
-			let creepsEnd = ArrayLib.writeAppend(env, ptr + gameCreeps, creepSizeof, 100, creeps, that.writeCreep);
-			creepsCount += creeps.length;
-			let droppedResources = room.find(FIND_DROPPED_RESOURCES);
-			let droppedResourcesEnd = ArrayLib.writeAppend(env, ptr + gameDroppedResources, droppedResourceSizeof, 100, droppedResources, that.writeDroppedResource);
-			droppedResourcesCount += droppedResources.length;
-			let sources = room.find(FIND_SOURCES);
-			let sourcesEnd = ArrayLib.writeAppend(env, ptr + gameSources, sourceSizeof, 100, sources, that.writeSource);
-			sourcesCount += sources.length;
-			let structures = room.find(FIND_STRUCTURES);
-			let structuresEnd = ArrayLib.writeAppend(env, ptr + gameStructures, structureSizeof, 100, structures, that.writeStructure);
-			structuresCount += structures.length;
-			let minerals = room.find(FIND_MINERALS);
-			if (minerals.length >= 1) {
-				if (minerals.length !== 1) {
-					console.log('Found more than 1 mineral in room '+ room.roomName);
-				}
-				that.writeMineral(env, gameMineralHole, minerals[0]);
-			}
-
-			// Memoize arguments to flush all at once. I think this might improve v8 performance but
-			// didn't actually test it.
-			let roomLocation = env.screeps.position.parseRoomName(room.name);
-			flushes[ii] = [
-				ptr,
-				roomLocation.rx, roomLocation.ry,
-				room.energyAvailable, room.energyCapacityAvailable,
-				minerals.length > 0 ? gameMineralHole : 0,
-				constructionSitesFirstByRoom[roomName], constructionSitesLastByRoom[roomName],
-				creepsBegin, creepsEnd,
-				droppedResourcesBegin, droppedResourcesEnd,
-				sourcesBegin, sourcesEnd,
-				structuresBegin, structuresEnd,
-				0, 0, // tombstone
-			];
-			creepsBegin = creepsEnd;
-			droppedResourcesBegin = droppedResourcesEnd;
-			sourcesBegin = sourcesEnd;
-			structuresBegin = structuresEnd;
-		}
-
-		// Flush room structures
-		env.__ZN7screeps12game_state_t13reserve_roomsEPS0_i(ptr, flushes.length);
-		for (let ii = flushes.length - 1; ii >= 0; --ii) {
-			env.__ZN7screeps12game_state_t10flush_roomEPS0_iiiiPvS2_S2_S2_S2_S2_S2_S2_S2_S2_S2_S2_S2_.apply(env, flushes[ii]);
-		}
-
-		// Flush game
+		// Write game data
 		env.HEAP32[(ptr + gameGcl) >> 2] = Game.gcl;
 		env.HEAP32[(ptr + gameTime) >> 2] = Game.time;
-		env.__ZN7screeps12game_state_t10flush_gameEPS0_(ptr);
+
+		// Ensure vector capacity
+		let constructionSites = Object.values(Game.constructionSites);
+		let flags = Object.values(Game.flags);
+		let rooms = Object.keys(Game.rooms);
+		let roomPointersLength = Math.max(env.HEAPU32[((ptr + gameRooms) >> 2) + 1], rooms.length);
+		let needsResize =
+			env.HEAPU32[((ptr + gameConstructionSites) >> 2) + 1] < constructionSites.length ||
+			env.HEAPU32[((ptr + gameFlags) >> 2) + 1] < flags.length ||
+			env.HEAPU32[((ptr + gameRooms) >> 2) + 1] < rooms.length;
+		env.HEAPU32[((ptr + gameConstructionSites) >> 2) + 1] = constructionSites.length;
+		env.HEAPU32[((ptr + gameFlags) >> 2) + 1] = flags.length;
+		env.HEAPU32[((ptr + gameRooms) >> 2) + 1] = rooms.length;
+		if (needsResize) {
+			env.__ZN7screeps12game_state_t15ensure_capacityEPS0_(ptr);
+		}
+
+		// Write sites and flags
+		constructionSites.sort(function(left, right) {
+			return PositionLib.parseRoomName(left.pos.roomName) - PositionLib.parseRoomName(right.pos.roomName);
+		});
+		ArrayLib.writeData(env, env.HEAPU32[(ptr + gameConstructionSites) >> 2], constructionSiteSizeof, constructionSites, that.writeConstructionSite);
+
+		// Write rooms
+		let roomPointers = env.HEAPU32[(ptr + gameRooms) >> 2] >> 2;
+		let roomPointersEnd = roomPointers + roomPointersLength;
+		let extraRoomPointers = roomPointers;
+		let unusedRoomPointers = [];
+		while (roomPointers !== roomPointersEnd && env.HEAPU32[(env.HEAPU32[roomPointers] + roomLocation) >> 2] === 0) {
+			++roomPointers;
+		}
+		rooms.sort(function(left, right) {
+			return PositionLib.parseRoomName(left) - PositionLib.parseRoomName(right);
+		});
+		for (let roomName of rooms) {
+			// Find pointer to room structure
+			let roomId = PositionLib.parseRoomName(roomName);
+			let roomPtr;
+			do {
+				if (roomPointers === roomPointersEnd) {
+					if (unusedRoomPointers.length === 0) {
+						roomPtr = env.HEAPU32[extraRoomPointers++];
+					} else {
+						roomPtr = unusedRoomPointers.pop();
+					}
+					break;
+				} else {
+					roomPtr = env.HEAPU32[roomPointers];
+					let nextRoomId = env.HEAP32[(roomPtr + roomLocation) >> 2];
+					if (nextRoomId < roomId) {
+						++roomPointers;
+						unusedRoomPointers.push(roomPtr);
+						continue;
+					} else if (nextRoomId > roomId) {
+						roomPtr = env.HEAPU32[extraRoomPointers++];
+					}
+					break;
+				}
+			} while (true);
+			that.writeRoom(env, roomPtr, roomId, Game.rooms[roomName]);
+		}
+	},
+
+	writeRoom(env, ptr, roomId, room) {
+		// Write room data
+		env.HEAP32[(ptr + roomLocation) >> 2] = roomId;
+
+		// Ensure vector capacity
+		let creeps = room.find(FIND_CREEPS);
+		let droppedResources = room.find(FIND_DROPPED_RESOURCES);
+		let sources = room.find(FIND_SOURCES);
+		let structures = room.find(FIND_STRUCTURES);
+		let needsResize =
+			env.HEAPU32[((ptr + roomCreeps) >> 2) + 1] < creeps.length ||
+			env.HEAPU32[((ptr + roomDroppedResources) >> 2) + 1] < droppedResources.length ||
+			env.HEAPU32[((ptr + roomSources) >> 2) + 1] < sources.length ||
+			env.HEAPU32[((ptr + roomStructures) >> 2) + 1] < structures.length;
+		env.HEAPU32[((ptr + roomCreeps) >> 2) + 1] = creeps.length;
+		env.HEAPU32[((ptr + roomDroppedResources) >> 2) + 1] = droppedResources.length;
+		env.HEAPU32[((ptr + roomSources) >> 2) + 1] = sources.length;
+		env.HEAPU32[((ptr + roomStructures) >> 2) + 1] = structures.length;
+		if (needsResize) {
+			env.__ZN7screeps6room_t15ensure_capacityEPS0_(ptr);
+		}
+
+		// Write structures
+		ArrayLib.writeData(env, env.HEAPU32[(ptr + roomCreeps) >> 2], creepSizeof, creeps, that.writeCreep);
+		ArrayLib.writeData(env, env.HEAPU32[(ptr + roomDroppedResources) >> 2], droppedResourceSizeof, droppedResources, that.writeDroppedResource);
+		ArrayLib.writeData(env, env.HEAPU32[(ptr + roomSources) >> 2], sourceSizeof, sources, that.writeSource);
+		ArrayLib.writeData(env, env.HEAPU32[(ptr + roomStructures) >> 2], structureSizeof, structures, that.writeStructure);
+
+		// Write mineral
+		let minerals = room.find(FIND_MINERALS);
+		let mineralPtr = 0;
+		if (minerals.length >= 1) {
+			if (minerals.length !== 1) {
+				console.log(`Found more than 1 mineral in room ${room.roomName}`);
+			}
+			mineralPtr = ptr + roomMineralHolder;
+			that.writeMineral(env, mineralPtr, minerals[0]);
+		}
+		env.HEAPU32[(ptr + roomMineral) >> 2] = mineralPtr;
 	},
 
 	writeRoomObject(env, ptr, pos) {
 		let room = PositionLib.parseRoomName(pos.roomName);
-		env.HEAPU16[(ptr + 0) >> 1] = pos.x + room.rx * 50;
-		env.HEAPU16[(ptr + 2) >> 1] = pos.y + room.ry * 50;
+		env.HEAPU16[(ptr + 0) >> 1] = pos.x + (room >> 16) * 50;
+		env.HEAPU16[(ptr + 2) >> 1] = pos.y + (room & 0xff) * 50;
 	},
 
 	writeGameObject(env, ptr, obj) {

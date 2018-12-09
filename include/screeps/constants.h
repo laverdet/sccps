@@ -11,6 +11,7 @@ constexpr int kMaximumPathLength = 1500;
 // Screeps constants
 constexpr int kMaxCreepSize = 50;
 constexpr int kMaxFlagNameLength = 60;
-constexpr int kWorldSize = 255;
+constexpr int k_world_size = 256;
+constexpr int k_world_size2 = k_world_size >> 1;
 
 } // namespace screeps

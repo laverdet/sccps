@@ -135,6 +135,7 @@ class pointer_container_t {
 		using iterator = T*;
 		using const_iterator = const T*;
 
+		pointer_container_t() {}
 		constexpr pointer_container_t(T* begin, T* end) : _begin(begin), _end(end) {}
 
 		constexpr reference operator[](size_type index) {

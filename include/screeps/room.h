@@ -1,10 +1,11 @@
 #pragma once
 #include "./constants.h"
 #include "./object.h"
+#include "./iterator.h"
 #include "./position.h"
 #include "./resource.h"
 #include "./structure.h"
-#include <optional>
+#include "./internal/memory.h"
 
 namespace screeps {
 
@@ -60,38 +61,64 @@ struct tombstone_t : public game_object_t {
 };
 
 class room_t {
+	friend class game_state_t;
 	private:
-		template <typename T> using list_t = pointer_container_t<T>;
+		template <class Type>
+		using container_t = typename internal::memory_range_t<Type>::container_t;
+
+		internal::memory_range_t<creep_t> creeps_memory;
+		internal::memory_range_t<dropped_resource_t> dropped_resources_memory;
+		internal::memory_range_t<source_t> sources_memory;
+		internal::memory_range_t<structure_union_t> structures_memory;
+		internal::memory_range_t<tombstone_t> tombstones_memory;
+		mineral_t mineral_holder;
 
 	public:
 		room_location_t location;
 		int32_t energy_available;
 		int32_t energy_capacity_available;
 		controller_t* controller = nullptr;
-		std::optional<mineral_t> mineral;
+		mineral_t* mineral = nullptr;
 		// storage_t* storage = nullptr;
 		// terminal_t* terminal = nullptr;
 
-		list_t<construction_site_t> construction_sites;
-		list_t<creep_t> creeps;
-		list_t<dropped_resource_t> dropped_resources;
-		// list_t<flag_t> flags;
-		list_t<source_t> sources;
-		list_t<structure_union_t> structures;
-		list_t<tombstone_t> tombstones;
+		pointer_container_t<construction_site_t> construction_sites;
+		container_t<creep_t> creeps;
+		container_t<dropped_resource_t> dropped_resources;
+		pointer_container_t<flag_t> flags;
+		container_t<source_t> sources;
+		container_t<structure_union_t> structures;
+		container_t<tombstone_t> tombstones;
 
-		room_t(
-			room_location_t location,
-			int32_t energy_available, int32_t energy_capacity_available,
-			const mineral_t* mineral,
-			construction_site_t* construction_sites_begin, construction_site_t* construction_sites_end,
-			creep_t* creeps_begin, creep_t* creeps_end,
-			dropped_resource_t* dropped_resources_begin, dropped_resource_t* dropped_resources_end,
-			source_t* sources_begin, source_t* sources_end,
-			structure_union_t* structures_begin, structure_union_t* structures_end,
-			tombstone_t* tombstones_begin, tombstone_t* tombstones_end
-		);
+	private:
+		template <class Function>
+		void invoke_containers_helper(Function& function) {}
 
+		template <class Function, class Container, class Range, class... Rest>
+		void invoke_containers_helper(Function& function, Container& container, Range& range, Rest&... rest) {
+			function(container, range);
+			invoke_containers_helper(function, rest...);
+		}
+
+		template <class Function>
+		void invoke_containers(Function function) {
+			invoke_containers_helper(
+				function,
+				creeps, creeps_memory,
+				dropped_resources, dropped_resources_memory,
+				sources, sources_memory,
+				structures, structures_memory,
+				tombstones, tombstones_memory
+			);
+		}
+
+		static void init();
+		static void ensure_capacity(room_t* room);
+		void reset();
+		void shrink();
+		void update_pointers();
+
+	public:
 		template <class Memory>
 		void serialize(Memory& memory) {
 			memory & location;
@@ -101,8 +128,6 @@ class room_t {
 		const terrain_t& terrain() const {
 			return location.terrain();
 		}
-
-		static void init();
 };
 
 } // namespace screeps

@@ -5,8 +5,8 @@ namespace screeps {
 
 terrain_t::terrain_t(room_location_t room) {
 	EM_ASM({
-		var roomName = Module.screeps.position.generateRoomName($0, $1);
-		var view = new Uint8Array(Module.buffer, $2, 625);
+		var roomName = Module.screeps.position.generateRoomName($0);
+		var view = new Uint8Array(Module.buffer, $1, 625);
 		view.fill(0);
 		var terrain = Game.map.getRoomTerrain(roomName);
 		for (var xx = 0; xx < 50; ++xx) {
@@ -29,7 +29,7 @@ terrain_t::terrain_t(room_location_t room) {
 				view[index >> 2] |= val << ((index & 3) << 1);
 			}
 		}
-	}, room.xx, room.yy, this);
+	}, room.id, this);
 }
 
 } // namespace screeps

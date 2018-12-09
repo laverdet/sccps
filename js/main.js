@@ -376,7 +376,7 @@ function* initialize() {
 
 	// Initialize internal structures
 	try {
-		mod.__ZN7screeps12game_state_t4initEv();
+		mod.__ZN7screeps12game_state_t11init_layoutEv();
 	} catch (err) {
 		print(2, `Uncaught error in init():\n${err.stack || err.message || err}`);
 		throw err;

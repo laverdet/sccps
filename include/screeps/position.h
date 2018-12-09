@@ -187,14 +187,15 @@ class area_iterable_t {
 template <typename Derived, typename Integral, typename IntegralUnion>
 struct coord_base_t {
 	union {
-		IntegralUnion id = 0;
+		IntegralUnion id;
 		struct {
 			Integral xx, yy;
 		};
 	};
 	using value_type = IntegralUnion;
 
-	constexpr coord_base_t() = default;
+	coord_base_t() {};
+	explicit constexpr coord_base_t(IntegralUnion id) : id(id) {}
 	constexpr coord_base_t(int xx, int yy) : xx(xx), yy(yy) {}
 
 	template <class Memory>
@@ -536,7 +537,6 @@ struct local_position_t : coord_base_t<local_position_t, uint16_t, int32_t> {
 struct position_t : coord_base_t<position_t, uint16_t, int32_t> {
 	using coord_base = coord_base_t<position_t, uint16_t, int32_t>;
 	using coord_base::coord_base_t;
-	constexpr position_t() = default;
 	constexpr position_t(room_location_t room, local_position_t pos) : coord_base(room.xx * 50 + pos.xx, room.yy * 50 + pos.yy) {}
 	constexpr position_t(room_location_t room, int xx, int yy) : coord_base(room.xx * 50 + xx, room.yy * 50 + yy) {}
 

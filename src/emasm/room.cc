@@ -4,6 +4,29 @@
 namespace screeps {
 
 void room_t::init() {
+	// room_t
+	EM_ASM({
+		Module.screeps.object.initRoomLayout({
+			'location': $0,
+			'creeps': $1,
+			'droppedResources': $2,
+			'sources': $3,
+			'structures': $4,
+			'tombstones': $5,
+			'mineral': $6,
+			'mineralHolder': $7,
+		});
+	},
+		offsetof(room_t, location),
+		offsetof(room_t, creeps_memory),
+		offsetof(room_t, dropped_resources_memory),
+		offsetof(room_t, sources_memory),
+		offsetof(room_t, structures_memory),
+		offsetof(room_t, tombstones_memory),
+		offsetof(room_t, mineral),
+		offsetof(room_t, mineral_holder)
+	);
+
 	// construction_site_t
 	EM_ASM({
 		Module.screeps.object.initConstructionSiteLayout({
@@ -67,33 +90,23 @@ void room_t::init() {
 	);
 }
 
-room_t::room_t(
-	room_location_t location,
-	int energy_available, int energy_capacity_available,
-	const mineral_t* mineral,
-	construction_site_t* construction_sites_begin, construction_site_t* construction_sites_end,
-	creep_t* creeps_begin, creep_t* creeps_end,
-	dropped_resource_t* dropped_resources_begin, dropped_resource_t* dropped_resources_end,
-	source_t* sources_begin, source_t* sources_end,
-	structure_union_t* structures_begin, structure_union_t* structures_end,
-	tombstone_t* tombstones_begin, tombstone_t* tombstones_end
-) :
-	location(location),
-	energy_available(energy_available), energy_capacity_available(energy_capacity_available),
-	mineral(mineral == nullptr ? std::nullopt : std::optional<mineral_t>(*mineral)),
-	construction_sites(construction_sites_begin, construction_sites_end),
-	creeps(creeps_begin, creeps_end),
-	dropped_resources(dropped_resources_begin, dropped_resources_end),
-	sources(sources_begin, sources_end),
-	structures(structures_begin, structures_end),
-	tombstones(tombstones_begin, tombstones_end
-) {
-	for (auto& ii : structures) {
-		if (ii.type == structure_t::controller) {
-			controller = &ii.controller;
-			break;
-		}
-	}
+EMSCRIPTEN_KEEPALIVE
+void room_t::ensure_capacity(room_t* room) {
+	room->invoke_containers([&](auto& container, auto& memory) {
+		memory.ensure_capacity(container);
+	});
+}
+
+void room_t::reset() {
+	invoke_containers([&](auto& container, auto& memory) {
+		memory.reset(container);
+	});
+}
+
+void room_t::shrink() {
+	invoke_containers([&](auto& container, auto& memory) {
+		memory.shrink(container);
+	});
 }
 
 } // namespace screeps

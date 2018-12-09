@@ -29,15 +29,19 @@ std::ostream& operator<<(std::ostream& os, direction_t dir) {
 }
 
 std::ostream& operator<<(std::ostream& os, room_location_t that) {
-	if (that.xx == 0 && that.yy == 0) {
+	if (that.id == 0) {
 		os <<"sim";
 	} else {
-		bool w = that.xx <= kWorldSize >> 1;
-		bool n = that.yy <= kWorldSize >> 1;
-		os <<(w ? 'W' : 'E')
-			<<(w ? 127 - that.xx : that.xx - 128)
-			<<(n ? 'N' : 'S')
-			<<(n ? 127 - that.yy : that.yy - 128);
+		if (that.xx < k_world_size2) {
+			os <<'W' <<k_world_size2 - that.xx - 1;
+		} else {
+			os <<'E' <<that.xx - k_world_size2;
+		}
+		if (that.yy < k_world_size2) {
+			os <<'N' <<k_world_size2 - that.yy - 1;
+		} else {
+			os <<'S' <<that.yy - k_world_size2;
+		}
 	}
 	return os;
 }

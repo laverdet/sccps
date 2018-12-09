@@ -48,7 +48,7 @@ endif
 # Object paths
 .SECONDEXPANSION:
 SCREEPS_EMASM_SRCS = cpu.cc creep.cc game.cc memory.cc path-finder.cc resource.cc room.cc structure.cc terrain.cc visual.cc
-SCREEPS_COMMON_SRCS = creep.cc game.cc position.cc resource.cc structure.cc visual.cc
+SCREEPS_COMMON_SRCS = creep.cc game.cc position.cc resource.cc room.cc structure.cc visual.cc
 SCREEPS_NATIVE_SRCS = cpu.cc creep.cc game.cc memory.cc path-finder.cc room.cc structure.cc terrain.cc visual.cc
 
 SCREEPS_RUNTIME = array.js main.js object.js position.js string.js util.js vector.js inflate.js inflate.wasm.wasm

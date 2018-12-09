@@ -1,15 +1,31 @@
 #include <screeps/game.h>
+#include <algorithm>
+#include <deque>
 #include <emscripten.h>
 
 namespace screeps {
 
 /**
- * game_t implementation
+ * game_state_t implementation
  */
 void game_state_t::load() {
 	resource_store_t::preloop();
 
-	rooms.clear();
+	// Reset memory for flags and sites
+	construction_sites_memory.reset(construction_sites);
+	flags_memory.reset(flags);
+	for (auto& [location, room] : rooms) {
+		room.reset();
+	}
+	for (auto& [location, room] : extra_rooms) {
+		room.reset();
+	}
+
+	// Setup pointers for existing rooms
+	room_pointers_memory.reset(room_pointers);
+	write_room_pointers();
+
+	// Clear out `by_id` indices
 	construction_sites_by_id.clear();
 	creeps_by_id.clear();
 	creeps_by_name.clear();
@@ -18,59 +34,99 @@ void game_state_t::load() {
 	structures_by_id.clear();
 	tombstones_by_id.clear();
 
-	construction_sites.clear();
-	creeps.clear();
-	dropped_resources.clear();
-	sources.clear();
-	structures.clear();
-
+	// Pass off to JS
 	EM_ASM({
 		Module.screeps.object.writeGame(Module, $0);
 	}, this);
+
+	// Shrink memory ranges
+	construction_sites_memory.shrink(construction_sites);
+	flags_memory.shrink(flags);
+	room_pointers_memory.shrink(room_pointers);
+
+	// Update room map keys
+	// TODO: This can be made faster with unordered_map::extract when that lands in libcxx
+	int count = 0;
+	for (auto ii = rooms.begin(); ii != rooms.end(); ) {
+		if (++count > 10) throw std::runtime_error("uh oh");
+		ii->second.shrink();
+		if (ii->first == ii->second.location) {
+			ii->second.update_pointers();
+			++ii;
+		} else {
+			auto tmp = std::move(ii->second);
+			auto location = tmp.location;
+			ii = rooms.erase(ii);
+			if (location == room_location_t(0)) {
+				extra_rooms.emplace(std::piecewise_construct, std::forward_as_tuple(++extra_room_key), std::forward_as_tuple(std::move(tmp)));
+			} else {
+				auto [it, did_insert] = rooms.emplace(std::piecewise_construct, std::forward_as_tuple(location), std::forward_as_tuple(std::move(tmp)));
+				it->second.update_pointers();
+			}
+		}
+	}
+	for (auto ii = extra_rooms.begin(); ii != extra_rooms.end(); ) {
+		if (++count > 10) throw std::runtime_error("uh oh");
+		ii->second.shrink();
+		if (ii->second.location == room_location_t(0)) {
+			++ii;
+		} else {
+			auto tmp = std::move(ii->second);
+			auto location = tmp.location;
+			ii = extra_rooms.erase(ii);
+			auto [it, did_insert] = rooms.emplace(std::piecewise_construct, std::forward_as_tuple(location), std::forward_as_tuple(std::move(tmp)));
+			it->second.update_pointers();
+		}
+	}
+
+	// Finalize room state pointers
+	update_pointers();
+}
+
+void game_state_t::write_room_pointers() {
+	// Write out existing room pointers
+	auto ii = room_pointers.begin();
+	for (auto& [location, room] : rooms) {
+		*ii++ = &room;
+	}
+	// Fill or shrink extra_rooms
+	int count = room_pointers_memory.size - rooms.size() - extra_rooms.size();
+	while (count > 0) {
+		extra_rooms.emplace(std::piecewise_construct, std::forward_as_tuple(++extra_room_key), std::forward_as_tuple());
+		--count;
+	}
+	while (count < 0) {
+		extra_rooms.erase(extra_rooms.begin());
+		++count;
+	}
+	// Write out extra room pointers
+	for (auto& [location, room] : extra_rooms) {
+		*ii++ = &room;
+		room.location = room_location_t(0);
+	}
+	std::sort(room_pointers.begin(), room_pointers.end(), [](room_t* left, room_t* right) {
+		return left->location.id < right->location.id;
+	});
 }
 
 EMSCRIPTEN_KEEPALIVE
-void game_state_t::init() {
-	static mineral_t mineral_hole;
+void game_state_t::init_layout() {
 	EM_ASM({
 		Module.screeps.object.initGameLayout({
 			'constructionSites': $0,
-			'creeps': $1,
-			'droppedResources': $2,
-			'flags': $3,
-			'sources': $4,
-			'structures': $5,
-			'tombstones': $6,
+			'flags': $1,
+			'rooms': $2,
 
-			'gcl': $7,
-			'mineralHole': $8,
-			'time': $9,
+			'gcl': $3,
+			'time': $4,
 		});
 	},
-		offsetof(game_state_t, construction_sites),
-		offsetof(game_state_t, creeps),
-		offsetof(game_state_t, dropped_resources),
-		offsetof(game_state_t, flags),
-		offsetof(game_state_t, sources),
-		offsetof(game_state_t, structures),
-		offsetof(game_state_t, tombstones),
+		offsetof(game_state_t, construction_sites_memory),
+		offsetof(game_state_t, flags_memory),
+		offsetof(game_state_t, room_pointers_memory),
 
 		offsetof(game_state_t, gcl),
-		&mineral_hole,
 		offsetof(game_state_t, time)
-	);
-	EM_ASM({
-		Module.screeps.object.initDroppedResourceLayout({
-			'droppedResource': {
-				'sizeof': $0,
-				'amount': $1,
-				'resourceType': $2,
-			},
-		});
-	},
-		sizeof(dropped_resource_t),
-		offsetof(dropped_resource_t, amount),
-		offsetof(dropped_resource_t, type)
 	);
 	creep_t::init();
 	resource_store_t::init();
@@ -79,69 +135,12 @@ void game_state_t::init() {
 }
 
 EMSCRIPTEN_KEEPALIVE
-void game_state_t::flush_game(game_state_t* game) {
-	game->construction_sites_by_id.reserve(game->construction_sites.size());
-	game->creeps_by_id.reserve(game->creeps.size());
-	game->dropped_resources_by_id.reserve(game->dropped_resources.size());
-	game->sources_by_id.reserve(game->sources.size());
-	game->structures_by_id.reserve(game->structures.size());
-	game->tombstones_by_id.reserve(game->tombstones.size());
-	for (auto& room : game->rooms) {
-		for (auto& construction_site : room.second.construction_sites) {
-			game->construction_sites_by_id.emplace(construction_site.id, &construction_site);
-		}
-		for (auto& creep : room.second.creeps) {
-			game->creeps_by_id.emplace(creep.id, &creep);
-		}
-		for (auto& dropped_resource : room.second.dropped_resources) {
-			game->dropped_resources_by_id.emplace(dropped_resource.id, &dropped_resource);
-		}
-		for (auto& source : room.second.sources) {
-			game->sources_by_id.emplace(source.id, &source);
-		}
-		for (auto& structure : room.second.structures) {
-			game->structures_by_id.emplace(structure.id, &structure);
-		}
+void game_state_t::ensure_capacity(game_state_t* game) {
+	if (game->room_pointers_memory.ensure_capacity(game->room_pointers)) {
+		game->write_room_pointers();
 	}
-}
-
-EMSCRIPTEN_KEEPALIVE
-void game_state_t::flush_room(
-	game_state_t* game,
-	int rx, int ry,
-	int energy_available, int energy_capacity_available,
-	void* mineral_ptr,
-	void* construction_sites_begin, void* construciton_sites_end,
-	void* creeps_begin, void* creeps_end,
-	void* dropped_resources_begin, void* dropped_resources_end,
-	void* sources_begin, void* sources_end,
-	void* structure_begin, void* structure_end,
-	void* tombstones_begin, void* tombstones_end
-) {
-	room_location_t room(rx, ry);
-	auto& room_ref = *game->rooms.emplace(
-		std::piecewise_construct,
-		std::forward_as_tuple(room),
-		std::forward_as_tuple(
-			room,
-			energy_available, energy_capacity_available,
-			reinterpret_cast<mineral_t*>(mineral_ptr),
-			reinterpret_cast<construction_site_t*>(construction_sites_begin), reinterpret_cast<construction_site_t*>(construciton_sites_end),
-			reinterpret_cast<creep_t*>(creeps_begin), reinterpret_cast<creep_t*>(creeps_end),
-			reinterpret_cast<dropped_resource_t*>(dropped_resources_begin), reinterpret_cast<dropped_resource_t*>(dropped_resources_end),
-			reinterpret_cast<source_t*>(sources_begin), reinterpret_cast<source_t*>(sources_end),
-			reinterpret_cast<structure_union_t*>(structure_begin), reinterpret_cast<structure_union_t*>(structure_end),
-			reinterpret_cast<tombstone_t*>(tombstones_begin), reinterpret_cast<tombstone_t*>(tombstones_end)
-		)
-	).first;
-	for (auto& creep : room_ref.second.creeps) {
-		game->creeps_by_name.emplace(creep.name, &creep);
-	}
-}
-
-EMSCRIPTEN_KEEPALIVE
-void game_state_t::reserve_rooms(game_state_t* game, int rooms_count) {
-	game->rooms.reserve(rooms_count);
+	game->construction_sites_memory.ensure_capacity(game->construction_sites);
+	game->flags_memory.ensure_capacity(game->flags);
 }
 
 // Called in the case of an uncaught exception. This does the `what()` virtual function call and
