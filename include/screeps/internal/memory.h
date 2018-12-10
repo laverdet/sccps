@@ -40,7 +40,6 @@ struct memory_range_t {
 	// resizes the vector if needed. This may not be called on `load` if the room's vectors are all
 	// already big enough
 	bool ensure_capacity(container_t& container) {
-		printf("ensure capacity %x %d %d\n", &container, container.capacity(), size);
 		if (size > container.size()) {
 			container.resize(0);
 			container.resize(size);
