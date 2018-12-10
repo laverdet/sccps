@@ -25,6 +25,11 @@ using creep_body_t = array_t<bodypart_t, kMaxCreepSize>;
 struct creep_bodypart_t {
 	resource_t boost;
 	bodypart_t type;
+
+	template <class Memory>
+	void serialize(Memory& memory) {
+		memory & boost & type;
+	}
 };
 
 struct creep_active_bodypart_t {
@@ -40,7 +45,7 @@ struct creep_t : game_object_t {
 	int32_t fatigue;
 	int32_t hits;
 	int32_t hits_max;
-	int32_t ticksToLive;
+	int32_t ticksToLive; // TODO: Fix casing
 	resource_store_t carry;
 	name_t name;
 	array_t<creep_bodypart_t, kMaxCreepSize> body;
@@ -62,6 +67,13 @@ struct creep_t : game_object_t {
 	int withdraw(const game_object_t& target, resource_t resource, int amount = -1) const;
 
 	const std::vector<creep_active_bodypart_t> get_active_bodyparts() const;
+
+	template <class Memory>
+	void serialize(Memory& memory) {
+		game_object_t::serialize(memory);
+		memory & carry_capacity & fatigue & hits & hits_max & ticksToLive;
+		memory & carry & name & body & spawning & my;
+	}
 
 	static void init();
 	friend std::ostream& operator<<(std::ostream& os, const creep_t& that);

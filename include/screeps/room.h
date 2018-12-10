@@ -27,11 +27,23 @@ struct construction_site_t : public game_object_t {
 	int32_t progress;
 	int32_t progress_total;
 	structure_t::type_t type;
+
+	template <class Memory>
+	void serialize(Memory& memory) {
+		game_object_t::serialize(memory);
+		memory & my & progress & progress_total & type;
+	}
 };
 
 struct dropped_resource_t : public game_object_t {
 	resource_t type;
 	int32_t amount;
+
+	template <class Memory>
+	void serialize(Memory& memory) {
+		game_object_t::serialize(memory);
+		memory & type & amount;
+	}
 };
 
 struct flag_t : public game_object_t {
@@ -45,12 +57,24 @@ struct mineral_t : public game_object_t {
 	int32_t amount;
 	int32_t ticks_to_regeneration;
 	int32_t density; // 1 - 4
+
+	template <class Memory>
+	void serialize(Memory& memory) {
+		game_object_t::serialize(memory);
+		memory & type & amount & ticks_to_regeneration & density;
+	}
 };
 
 struct source_t : public game_object_t {
 	int32_t energy;
 	int32_t energy_capacity;
 	int32_t ticks_to_regeneration;
+
+	template <class Memory>
+	void serialize(Memory& memory) {
+		game_object_t::serialize(memory);
+		memory & energy & energy_capacity & ticks_to_regeneration;
+	}
 };
 
 struct tombstone_t : public game_object_t {
@@ -58,6 +82,12 @@ struct tombstone_t : public game_object_t {
 	int32_t death_time;
 	resource_store_t store;
 	int32_t ticks_to_decay;
+
+	template <class Memory>
+	void serialize(Memory& memory) {
+		game_object_t::serialize(memory);
+		memory & creep & death_time & store & ticks_to_decay;
+	}
 };
 
 class room_t {
@@ -123,6 +153,10 @@ class room_t {
 		void serialize(Memory& memory) {
 			memory & location;
 			memory & energy_available & energy_capacity_available;
+			memory & creeps & dropped_resources & sources & structures & tombstones;
+			if constexpr (Memory::is_reader) {
+				update_pointers();
+			}
 		}
 
 		const terrain_t& terrain() const {

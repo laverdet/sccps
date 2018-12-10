@@ -105,6 +105,16 @@ struct resource_store_t {
 		static void init();
 		static void preloop();
 
+		template <class Memory>
+		void serialize(Memory& memory) {
+			memory & single_type & single_amount;
+			if constexpr (Memory::is_reader) {
+				extended = nullptr;
+			} else if (extended != nullptr) {
+				throw std::runtime_error("extended error");
+			}
+		}
+
 		value_type& operator[](resource_t type) {
 			if (extended == nullptr) {
 				if (single_amount == 0) {

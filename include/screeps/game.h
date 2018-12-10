@@ -6,6 +6,9 @@
 #include "./position.h"
 #include "./room.h"
 #include "./structure.h"
+#include "./terrain.h"
+#include "./memory/unordered_map.h"
+#include "./memory/vector.h"
 #include "./internal/memory.h"
 #include <cstdint>
 #include <unordered_map>
@@ -135,7 +138,24 @@ class game_state_t {
 		template <class Memory>
 		void serialize(Memory& memory) {
 			memory & gcl & time;
+			memory & construction_sites;
 			memory & rooms;
+
+			// Super hacky terrain storage
+			for (auto& [location, room] : rooms) {
+				if constexpr (Memory::is_reader) {
+					auto terrain = new terrain_t();
+					room_location_t location;
+					memory & location & *terrain;
+					location.terrain(terrain);
+				} else {
+					memory & location & location.terrain();
+				}
+				update_pointers();
+			}
+			if constexpr (Memory::is_reader) {
+				update_pointers();
+			}
 		}
 
 		void load();

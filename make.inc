@@ -31,6 +31,7 @@ MISSING_SYMBOLS := ___cxa_find_matching_catch ___cxa_find_matching_catch_2 ___cx
 ifeq ($(TARGET), debug)
 CXXFLAGS += -O2 -ftrapv
 EM_CXXFLAGS += -g4
+NATIVE_CXXFLAGS += -g
 EMFLAGS += -s ASSERTIONS=1 -g4 -O2
 MAIN_EMFLAGS += -s DEMANGLE_SUPPORT=1
 DYNAMIC_LINK = 1
@@ -147,13 +148,13 @@ $(ASMJS)/% $(WASM)/%: $(SCREEPS_PATH)/js/% | $$(@D)/.
 
 # native specifics
 $(BUILD_PATH)/%.o: %.cc | $$(@D)/.
-	$(CXX) -c -o $@ $< -MD $(CXXFLAGS)
+	$(CXX) -c -o $@ $< -MD $(CXXFLAGS) $(NATIVE_CXXFLAGS)
 $(BUILD_PATH)/screeps.ar: $$(NATIVE_OBJS)
 	$(AR) rcs $@ $^
 .PRECIOUS: $(BUILD_PATH)/%.o
 
 $(MODULE_NAME): $(BUILD_PATH)/screeps.ar $$(NATIVE_USER_OBJS)
-	$(CXX) -o $@ $^
+	$(CXX) -o $@ $^ $(CXXFLAGS) $(NATIVE_CXXFLAGS)
 
 # Cleanups
 clean:

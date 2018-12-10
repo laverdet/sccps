@@ -45,6 +45,23 @@ struct array_t {
 		array_t(std::initializer_list<Type> list) : size_(list.size()), store(reinterpret_cast<A const&>(*(list.begin()))) {
 		}
 
+		template <class Memory>
+		void read(Memory& memory) {
+			memory & size_;
+			size_t ii = size_;
+			while (ii-- > 0) {
+				emplace_back(memory.read());
+			}
+		}
+
+		template <class Memory>
+		void write(Memory& memory) {
+			memory & size_;
+			for (auto& element : *this) {
+				memory & element;
+			}
+		}
+
 		size_type size() const {
 			return size_;
 		}

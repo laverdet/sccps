@@ -85,6 +85,11 @@ union structure_union_t {
 
 	structure_union_t() {}
 
+	template <class Memory>
+	void serialize(Memory& memory) {
+		memory.copy(reinterpret_cast<uint8_t*>(this), sizeof(structure_union_t));
+	}
+
 	bool is_owned() const {
 		switch (type) {
 			case structure_t::extension:

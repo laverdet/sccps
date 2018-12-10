@@ -288,7 +288,7 @@ struct coord_base_t {
 struct room_location_t : coord_base_t<room_location_t, uint16_t, int32_t> {
 	using coord_base_t<room_location_t, uint16_t, int32_t>::coord_base_t;
 
-	const class terrain_t& terrain() const;
+	const class terrain_t& terrain(class terrain_t* terrain = nullptr) const;
 	friend std::ostream& operator<<(std::ostream& os, room_location_t that);
 };
 
