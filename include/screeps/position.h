@@ -128,7 +128,7 @@ class area_iterable_t {
 	private:
 		class iterator : public random_access_iterator_t<iterator> {
 			private:
-				int width = 0, offset = 0, index = 0;
+				unsigned int offset = 0, index = 0, width = 0;
 
 			public:
 				using value_type = Type;
@@ -136,10 +136,10 @@ class area_iterable_t {
 				using reference = Type;
 
 				constexpr iterator() = default;
-				constexpr iterator(int width, int offset, int index) : width(width), offset(offset), index(index) {}
+				constexpr iterator(unsigned int offset, unsigned int width, unsigned int index) : offset(offset), width(width), index(index) {}
 
 				constexpr reference operator*() const {
-					return Type(offset + index % width, index / width);
+					return {offset + index % width, index / width, 0};
 				}
 
 				constexpr bool operator==(const iterator& rhs) const {
@@ -156,26 +156,26 @@ class area_iterable_t {
 				}
 
 				constexpr iterator operator+(int val) const {
-					return {width, offset, index + 1};
+					return {offset, width, index + 1};
 				}
 		};
 
-		int width, offset, index, final_index;
+		unsigned int offset, width, index, final_index;
 
 	public:
 		constexpr area_iterable_t(Type top_left, Type bottom_right) :
-			width(bottom_right.xx - top_left.xx + 1),
-			offset(top_left.xx),
-			index(top_left.yy * width),
-			final_index(index + std::max(0, ((int)bottom_right.yy - (int)top_left.yy + 1) * width)) {
+			offset(top_left.ux),
+			width(bottom_right.ux - top_left.ux + 1),
+			index(top_left.uy * width),
+			final_index(index + std::max(0u, (bottom_right.uy - top_left.uy + 1) * width)) {
 		}
 
 		constexpr iterator begin() const {
-			return {width, offset, index};
+			return {offset, width, index};
 		}
 
 		constexpr iterator end() const {
-			return {width, offset, final_index};
+			return {offset, width, final_index};
 		}
 };
 
@@ -251,19 +251,22 @@ class with_range_iterable_t {
 };
 
 // Base class for xx/yy pairs which implements some commonalities between the various game positions
-template <typename Derived, typename Integral, typename IntegralUnion>
+template <typename Derived>
 struct coord_base_t {
 	union {
-		IntegralUnion id;
+		uint32_t id;
 		struct {
-			Integral xx, yy;
+			int16_t xx, yy;
+		};
+		struct {
+			uint16_t ux, uy;
 		};
 	};
-	using value_type = IntegralUnion;
 
 	coord_base_t() {};
-	explicit constexpr coord_base_t(IntegralUnion id) : id(id) {}
+	explicit constexpr coord_base_t(uint32_t id) : id(id) {}
 	constexpr coord_base_t(int xx, int yy) : xx(xx), yy(yy) {}
+	constexpr coord_base_t(uint16_t ux, uint16_t uy, int) : ux(ux), uy(uy) {}
 
 	template <class Memory>
 	void serialize(Memory& memory) {
@@ -355,24 +358,24 @@ struct coord_base_t {
 
 // This is replacement for `roomName` in the JS API.
 // "E0S0" -> { xx: 128, yy: 128 }
-struct room_location_t : coord_base_t<room_location_t, uint16_t, int32_t> {
-	using coord_base_t<room_location_t, uint16_t, int32_t>::coord_base_t;
+struct room_location_t : coord_base_t<room_location_t> {
+	using coord_base_t::coord_base_t;
 
 	const class terrain_t& terrain(class terrain_t* terrain = nullptr) const;
 	friend std::ostream& operator<<(std::ostream& os, room_location_t that);
 };
 
 // Simple container for a location in an arbitrary room
-struct local_position_t : coord_base_t<local_position_t, uint16_t, int32_t> {
-	using coord_base_t<local_position_t, uint16_t, int32_t>::coord_base_t;
+struct local_position_t : coord_base_t<local_position_t> {
+	using coord_base_t::coord_base_t;
 
 	friend std::ostream& operator<<(std::ostream& os, local_position_t that);
 	constexpr struct position_t in_room(room_location_t room) const;
 
 	constexpr int range_to_edge() const {
 		return 24 - std::min(
-			std::abs(static_cast<int>(xx) - 24) - xx / 25,
-			std::abs(static_cast<int>(yy) - 24) - yy / 25
+			std::abs(xx - 24) - xx / 25,
+			std::abs(yy - 24) - yy / 25
 		);
 	}
 
@@ -445,24 +448,24 @@ struct local_position_t : coord_base_t<local_position_t, uint16_t, int32_t> {
 		int bounds = 0;
 
 		// Clamp range horizontally
-		if (int dx = range - (int)xx; dx > 0) {
+		if (int dx = range - xx; dx > 0) {
 			++bounds;
 			begin = std::max(begin, dx);
 			end = std::min(end, range * 6 - dx + 1);
 		}
-		if (int dx = 49 - range - (int)xx; dx < 0) {
+		if (int dx = 49 - range - xx; dx < 0) {
 			++bounds;
 			begin = std::max(begin, range * 4 - dx);
 			end = std::min(end, range * 10 + dx + 1);
 		}
 
 		// Clamp range vertically
-		if (int dy = range - (int)yy; dy > 0) {
+		if (int dy = range - yy; dy > 0) {
 			++bounds;
 			begin = std::max(begin, range * 2 + dy);
 			end = std::min(end, range * 8 - dy + 1);
 		}
-		if (int dy = 49 - range - (int)yy; dy < 0) {
+		if (int dy = 49 - range - yy; dy < 0) {
 			++bounds;
 			if (end >= range * 8) {
 				begin = std::max(begin, range * 6 - dy);
@@ -500,23 +503,23 @@ struct local_position_t : coord_base_t<local_position_t, uint16_t, int32_t> {
 
 	constexpr area_iterable_t<local_position_t> within_range(int range) const {
 		return {
-			local_position_t(std::max(0, (int)xx - range), std::max(0, (int)yy - range)),
-			local_position_t(std::min(49, (int)xx + range), std::min(49, (int)yy + range))
+			local_position_t(std::max(0, xx - range), std::max(0, yy - range)),
+			local_position_t(std::min(49, xx + range), std::min(49, yy + range))
 		};
 	}
 
 	template <class Container>
 	constexpr area_iterable_t<local_position_t> within_range(int range, Container&& container) const {
-		local_position_t top_left(std::max(0, (int)xx - range), std::max(0, (int)yy - range));
-		local_position_t bottom_right(std::min(49, (int)xx + range), std::min(49, (int)yy + range));
+		local_position_t top_left(std::max(0, xx - range), std::max(0, yy - range));
+		local_position_t bottom_right(std::min(49, xx + range), std::min(49, yy + range));
 		for (auto pos : container) {
 			top_left = local_position_t(
-				std::max<int>(top_left.xx, (int)pos.xx - range),
-				std::max<int>(top_left.yy, (int)pos.yy - range)
+				std::max<int16_t>(top_left.xx, pos.xx - range),
+				std::max<int16_t>(top_left.yy, pos.yy - range)
 			);
 			bottom_right = local_position_t(
-				std::min<int>(bottom_right.xx, (int)pos.xx + range),
-				std::min<int>(bottom_right.yy, (int)pos.yy + range)
+				std::min<int16_t>(bottom_right.xx, pos.xx + range),
+				std::min<int16_t>(bottom_right.yy, pos.yy + range)
 			);
 		}
 		return {top_left, bottom_right};
@@ -573,18 +576,18 @@ struct local_position_t : coord_base_t<local_position_t, uint16_t, int32_t> {
 
 // This represents a position in a continuous plane of the whole world. `roomName` is implied from
 // xx and yy.
-struct position_t : coord_base_t<position_t, uint16_t, int32_t> {
-	using coord_base = coord_base_t<position_t, uint16_t, int32_t>;
+struct position_t : coord_base_t<position_t> {
+	using coord_base = coord_base_t<position_t>;
 	using coord_base::coord_base_t;
-	constexpr position_t(room_location_t room, local_position_t pos) : coord_base(room.xx * 50 + pos.xx, room.yy * 50 + pos.yy) {}
-	constexpr position_t(room_location_t room, int xx, int yy) : coord_base(room.xx * 50 + xx, room.yy * 50 + yy) {}
+	constexpr position_t(room_location_t room, local_position_t pos) : coord_base(room.ux * 50 + pos.ux, room.uy * 50 + pos.uy, 0) {}
+	constexpr position_t(room_location_t room, int xx, int yy) : coord_base(room.ux * 50 + xx, room.uy * 50 + yy, 0) {}
 
 	constexpr room_location_t room_location() const {
-		return {xx / 50, yy / 50};
+		return {ux / 50, uy / 50, 0};
 	}
 
 	constexpr local_position_t to_local() const {
-		return {xx % 50, yy % 50};
+		return {ux % 50, uy % 50, 0};
 	}
 
 	friend std::ostream& operator<<(std::ostream& os, position_t that);
