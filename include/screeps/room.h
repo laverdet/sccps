@@ -152,6 +152,7 @@ class room_t {
 		template <class Memory>
 		void serialize(Memory& memory) {
 			memory & location;
+			memory & mineral_holder & reinterpret_cast<int&>(mineral);
 			memory & energy_available & energy_capacity_available;
 			memory & creeps & dropped_resources & sources & structures & tombstones;
 			if constexpr (Memory::is_reader) {
