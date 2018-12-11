@@ -70,15 +70,15 @@ class random_access_iterator_t {
 		}
 
 		constexpr bool operator>(const T& rhs) const {
-			return !(that() < rhs);
-		}
-
-		constexpr bool operator>=(const T& rhs) const {
-			return (that() > rhs) || (that() == rhs);
+			return rhs < that();
 		}
 
 		constexpr bool operator<=(const T& rhs) const {
-			return (that() < rhs) || (that() == rhs);
+			return !(that() > rhs);
+		}
+
+		constexpr bool operator>=(const T& rhs) const {
+			return !(that() < rhs);
 		}
 
 		constexpr auto&& operator[](int index) const {

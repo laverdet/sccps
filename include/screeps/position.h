@@ -128,7 +128,7 @@ class area_iterable_t {
 	private:
 		class iterator : public random_access_iterator_t<iterator> {
 			private:
-				typename Type::value_type width = 0, offset = 0, index = 0;
+				int width = 0, offset = 0, index = 0;
 
 			public:
 				using value_type = Type;
@@ -160,18 +160,14 @@ class area_iterable_t {
 				}
 		};
 
-		typename Type::value_type width, offset, index, final_index;
+		int width, offset, index, final_index;
 
 	public:
 		constexpr area_iterable_t(Type top_left, Type bottom_right) :
 			width(bottom_right.xx - top_left.xx + 1),
 			offset(top_left.xx),
 			index(top_left.yy * width),
-			final_index(index + (bottom_right.yy - top_left.yy + 1) * width) {
-
-			if (bottom_right.xx < top_left.xx || bottom_right.yy < top_left.yy) {
-				throw std::domain_error("Invalid area corners");
-			}
+			final_index(index + std::max(0, ((int)bottom_right.yy - (int)top_left.yy + 1) * width)) {
 		}
 
 		constexpr iterator begin() const {
@@ -180,6 +176,77 @@ class area_iterable_t {
 
 		constexpr iterator end() const {
 			return {width, offset, final_index};
+		}
+};
+
+template <typename Type>
+class with_range_iterable_t {
+	private:
+		class iterator : public random_access_iterator_t<iterator> {
+			private:
+				Type origin;
+				int range = 0, index = 0;
+
+				constexpr int offset(int ii) const {
+					return std::clamp(range * 2 - std::abs(ii % (range * 8) - range * 4), -range, range);
+				}
+
+			public:
+				using value_type = Type;
+				using pointer = void;
+				using reference = Type;
+
+				constexpr iterator() = default;
+				constexpr iterator(Type origin, int range, int index) : origin(origin), range(range), index(index) {}
+
+				constexpr reference operator*() const {
+					return {
+						origin.xx + offset(index + range),
+						origin.yy + offset(index - range)
+					};
+				}
+
+				constexpr bool operator==(const iterator& rhs) const {
+					return index == rhs.index;
+				}
+
+				constexpr bool operator<(const iterator& rhs) const {
+					return index < rhs.index;
+				}
+
+				constexpr iterator& operator+=(int val) {
+					index += val;
+					return *this;
+				}
+
+				constexpr iterator operator+(int val) const {
+					return {range, index + val};
+				}
+		};
+
+		Type origin;
+		int range, _begin, _end;
+
+	public:
+		constexpr with_range_iterable_t(
+			Type _origin, int _range, int begin, int end
+		) : origin(_origin), range(_range), _begin(begin), _end(end) {
+			if (range == 0) {
+				// Fake it for range = 0 because we can't modulus by zero
+				++range;
+				++origin.xx;
+				++origin.yy;
+				_begin = 0;
+				_end = 1;
+			}
+		}
+
+		constexpr iterator begin() const {
+			return {origin, range, _begin};
+		}
+
+		constexpr iterator end() const {
+			return {origin, range, _end};
 		}
 };
 
@@ -278,7 +345,10 @@ struct coord_base_t {
 		}
 	}
 
-	static area_iterable_t<Derived> area(Derived top_left, Derived bottom_right) {
+	static constexpr area_iterable_t<Derived> area(Derived top_left, Derived bottom_right) {
+		if (bottom_right.xx < top_left.xx || bottom_right.yy < top_left.yy) {
+			throw std::domain_error("Invalid area corners");
+		}
 		return {top_left, bottom_right};
 	}
 };
@@ -298,6 +368,13 @@ struct local_position_t : coord_base_t<local_position_t, uint16_t, int32_t> {
 
 	friend std::ostream& operator<<(std::ostream& os, local_position_t that);
 	constexpr struct position_t in_room(room_location_t room) const;
+
+	constexpr int range_to_edge() const {
+		return 24 - std::min(
+			std::abs(static_cast<int>(xx) - 24) - xx / 25,
+			std::abs(static_cast<int>(yy) - 24) - yy / 25
+		);
+	}
 
 	constexpr dynamic_neighbor_iterable_t<local_position_t> neighbors() const {
 		if (xx == 0) {
@@ -362,125 +439,87 @@ struct local_position_t : coord_base_t<local_position_t, uint16_t, int32_t> {
 		}
 	}
 
-	// TODO: This iterator is awful
-	struct with_range_iterable_t {
-		class iterator : public forward_iterator_t<iterator> {
-			private:
-				uint8_t range2;
-				int8_t xx, yy;
-				int8_t dx = 1;
-				int8_t dy = 0;
-				uint16_t tick = 0;
+	constexpr with_range_iterable_t<local_position_t> with_range(int range) const {
+		int begin = 0; // Top-left
+		int end = range * 12; // Bottom-right but it goes around 1.5 times
+		int bounds = 0;
 
-			public:
-				using value_type = local_position_t;
-				using pointer = void;
-				using reference = local_position_t;
-
-				iterator() = default;
-				constexpr iterator(uint16_t tick) : range2(0), xx(0), yy(0), tick(tick) {}
-				constexpr iterator(int8_t xx, int8_t yy, uint8_t range) : range2(range * 2), xx(xx - range), yy(yy - range) {
-					if (this->xx < 0 || this->yy < 0) {
-						++(*this);
-					}
-				}
-
-				constexpr local_position_t operator*() const {
-					return {xx, yy};
-				}
-
-				constexpr bool operator==(const iterator& rhs) const {
-					return tick == rhs.tick;
-				}
-
-				constexpr iterator& operator++() {
-					xx += dx;
-					yy += dy;
-					++tick;
-					if (tick % range2 == 0) {
-						switch (tick / range2) {
-							case 1:
-								dx = 0;
-								dy = 1;
-								break;
-							case 2:
-								dx = -1;
-								dy = 0;
-								break;
-							case 3:
-								dx = 0;
-								dy = -1;
-								break;
-						}
-					}
-					if ((xx < 0 || xx > 49 || yy < 0 || yy > 49) && tick < range2 * 4) {
-						++*this;
-					}
-					return *this;
-				}
-		};
-		int8_t xx, yy, range;
-		constexpr with_range_iterable_t(local_position_t origin, uint8_t range) : xx(origin.xx), yy(origin.yy), range(range) {}
-
-		constexpr iterator begin() const {
-			return {xx, yy, range};
+		// Clamp range horizontally
+		if (int dx = range - (int)xx; dx > 0) {
+			++bounds;
+			begin = std::max(begin, dx);
+			end = std::min(end, range * 6 - dx + 1);
+		}
+		if (int dx = 49 - range - (int)xx; dx < 0) {
+			++bounds;
+			begin = std::max(begin, range * 4 - dx);
+			end = std::min(end, range * 10 + dx + 1);
 		}
 
-		constexpr iterator end() const {
-			return {range * 8};
+		// Clamp range vertically
+		if (int dy = range - (int)yy; dy > 0) {
+			++bounds;
+			begin = std::max(begin, range * 2 + dy);
+			end = std::min(end, range * 8 - dy + 1);
 		}
-	};
-	with_range_iterable_t with_range(uint8_t range) const {
-		return {*this, range};
+		if (int dy = 49 - range - (int)yy; dy < 0) {
+			++bounds;
+			if (end >= range * 8) {
+				begin = std::max(begin, range * 6 - dy);
+				end = std::min(end, range * 12 + dy + 1);
+			} else {
+				end = std::min(end, range * 4 + dy + 1);
+			}
+		}
+
+		if (bounds == 4) {
+			// Clamped in all directions = no results
+			begin = end = 0;
+		} else if (end < begin) {
+			// Begin wrapped past end
+			if (bounds == 3) {
+				// In this case it will be a single straight line
+				if (xx > yy) {
+					begin = range * 6 + yy + range - 49;
+				} else {
+					begin = range - xx;
+				}
+				end = begin + 50;
+			} else {
+				std::swap(begin, end);
+				end -= begin;
+				begin += range * 2;
+				end += range * 6;
+			}
+		} else if (begin + range * 8 < end) {
+			// Range is larger than full perimeter
+			end -= range * 4;
+		}
+		return {*this, range, begin, end};
 	}
 
-	// TODO: Replace with area_iterable_t?
-	struct within_range_iterable_t {
-		class iterator : public forward_iterator_t<iterator> {
-			private:
-				uint8_t xx, yy, range;
-				with_range_iterable_t::iterator it;
-				with_range_iterable_t::iterator it_end;
-
-			public:
-				using value_type = local_position_t;
-				using pointer = void;
-				using reference = local_position_t;
-
-				iterator() = default;
-				constexpr iterator(uint8_t xx, uint8_t yy) : xx(xx), yy(yy), range(1), it(xx, yy, 1), it_end(8) {}
-				constexpr iterator(uint8_t range) : xx(0), yy(0), range(range), it(0), it_end(0) {}
-
-				constexpr local_position_t operator*() const {
-					return *it;
-				}
-
-				constexpr bool operator==(const iterator& rhs) const {
-					return range == rhs.range;
-				}
-
-				constexpr iterator& operator++() {
-					++it;
-					if (!(it != it_end)) {
-						it = with_range_iterable_t::iterator(xx, yy, ++range);
-						it_end = with_range_iterable_t::iterator(range * 8);
-					}
-					return *this;
-				}
+	constexpr area_iterable_t<local_position_t> within_range(int range) const {
+		return {
+			local_position_t(std::max(0, (int)xx - range), std::max(0, (int)yy - range)),
+			local_position_t(std::min(49, (int)xx + range), std::min(49, (int)yy + range))
 		};
-		uint8_t xx, yy, range;
-		constexpr within_range_iterable_t(uint8_t xx, uint8_t yy, uint8_t range) : xx(xx), yy(yy), range(range) {}
+	}
 
-		constexpr iterator begin() const {
-			return {xx, yy};
+	template <class Container>
+	constexpr area_iterable_t<local_position_t> within_range(int range, Container&& container) const {
+		local_position_t top_left(std::max(0, (int)xx - range), std::max(0, (int)yy - range));
+		local_position_t bottom_right(std::min(49, (int)xx + range), std::min(49, (int)yy + range));
+		for (auto pos : container) {
+			top_left = local_position_t(
+				std::max<int>(top_left.xx, (int)pos.xx - range),
+				std::max<int>(top_left.yy, (int)pos.yy - range)
+			);
+			bottom_right = local_position_t(
+				std::min<int>(bottom_right.xx, (int)pos.xx + range),
+				std::min<int>(bottom_right.yy, (int)pos.yy + range)
+			);
 		}
-
-		constexpr iterator end() const {
-			return {range + 1};
-		}
-	};
-	within_range_iterable_t within_range(uint8_t range) const {
-		return {xx, yy, range};
+		return {top_left, bottom_right};
 	}
 
 	struct all_iteratable_t {
@@ -699,6 +738,14 @@ class local_matrix_t : public local_matrix_store_t<Type, Store, Pack> {
 			memory.copy(data, reinterpret_cast<uint8_t*>(this->costs.data() + this->costs.size()) - data);
 		}
 
+		constexpr bool operator==(const local_matrix_t& rhs) const {
+			return this->costs == rhs.costs;
+		}
+
+		constexpr bool operator!=(const local_matrix_t& rhs) const {
+			return this->costs != rhs.costs;
+		}
+
 		constexpr reference get(int xx, int yy) {
 			return (*this)[xx * 50 + yy];
 		}
@@ -722,44 +769,24 @@ class local_matrix_t : public local_matrix_store_t<Type, Store, Pack> {
 
 } // namespace screeps
 
+template <class First, class Second>
+using first_t = First;
+
 // Hash specialization for hashing STL containers
-/*
-template <typename Derived, typename Integral, typename IntegralUnion>
-struct std::hash<screeps::coord_base_t<Derived, Integral, IntegralUnion>> {
-	auto operator()(screeps::coord_base_t<Derived, Integral, IntegralUnion> val) const {
-		return std::hash<IntegralUnion>()(val.id);
-	}
-};
-*/
-template <> struct std::hash<screeps::room_location_t&> {
+template <> struct std::hash<screeps::room_location_t> {
 	auto operator()(const screeps::room_location_t& val) const {
 		return std::hash<decltype(val.id)>()(val.id);
 	}
 };
-template <> struct std::hash<screeps::room_location_t> {
-	auto operator()(screeps::room_location_t val) const {
-		return std::hash<decltype(val.id)>()(val.id);
-	}
-};
 
-template <> struct std::hash<screeps::local_position_t&> {
+template <> struct std::hash<screeps::local_position_t> {
 	auto operator()(const screeps::local_position_t& val) const {
 		return std::hash<decltype(val.id)>()(val.id);
 	}
 };
-template <> struct std::hash<screeps::local_position_t> {
-	auto operator()(screeps::local_position_t val) const {
-		return std::hash<decltype(val.id)>()(val.id);
-	}
-};
 
-template <> struct std::hash<screeps::position_t&> {
-	auto operator()(const screeps::position_t& val) const {
-		return std::hash<decltype(val.id)>()(val.id);
-	}
-};
 template <> struct std::hash<screeps::position_t> {
-	auto operator()(screeps::position_t val) const {
+	auto operator()(const screeps::position_t& val) const {
 		return std::hash<decltype(val.id)>()(val.id);
 	}
 };
