@@ -71,6 +71,7 @@ let constructionSiteMy, constructionSiteProgress, constructionSiteProgressTotal,
 
 // creep_t
 const [ bodyPartEnum, bodyPartEnumReverse ] = util.enumToMap([
+	undefined,
 	ATTACK,
 	CARRY,
 	CLAIM,
@@ -90,6 +91,7 @@ let droppedResourceAmount, droppedResourceType;
 
 // flag_t
 const [ colorEnum, colorEnumReverse ] = util.enumToMap([
+	undefined,
 	COLOR_BLUE,
 	COLOR_BROWN,
 	COLOR_CYAN,
@@ -117,6 +119,7 @@ let sourceEnergy, sourceEnergyCapacity, sourceTicksToRegeneration;
 
 // structure_t
 const [ structureTypeEnum, structureTypeEnumReverse ] = util.enumToMap([
+	undefined,
 	STRUCTURE_CONTAINER,
 	STRUCTURE_CONTROLLER,
 	STRUCTURE_EXTENSION,
@@ -141,6 +144,7 @@ let structureSizeof;
 let structureStructureType;
 let structureDestroyableHits, structureDestroyableHitsMax;
 let structureOwnedMy;
+let structureControllerLevel, structureControllerProgress, structureControllerProgressTotal, structureControllerTicksToDowngrade, structureControllerUpgradeBlocked;
 let structureExtensionEnergy, structureExtensionEnergyCapacity;
 let structureSpawnEnergy, structureSpawnEnergyCapacity;
 
@@ -221,8 +225,16 @@ const that = module.exports = {
 		structureDestroyableHits = layout.destroyable.hits;
 		structureDestroyableHitsMax = layout.destroyable.hitsMax;
 		structureOwnedMy = layout.owned.my;
+
+		structureControllerLevel = layout.controller.level;
+		structureControllerProgress = layout.controller.progress;
+		structureControllerProgressTotal = layout.controller.progressTotal;
+		structureControllerTicksToDowngrade = layout.controller.ticksToDowngrade;
+		structureControllerUpgradeBlocked = layout.controller.upgradeBlocked;
+
 		structureExtensionEnergy = layout.extension.energy;
 		structureExtensionEnergyCapacity = layout.extension.energyCapacity;
+
 		structureSpawnEnergy = layout.spawn.energy;
 		structureSpawnEnergyCapacity = layout.spawn.energyCapacity;
 	},
@@ -425,10 +437,18 @@ const that = module.exports = {
 		env.HEAP32[(ptr + structureStructureType) >> 2] = structureTypeEnum.get(structure.structureType);
 		switch (structure.structureType) {
 			case STRUCTURE_CONTROLLER:
+				env.HEAP32[(ptr + structureControllerLevel) >> 2] = structure.level;
+				env.HEAP32[(ptr + structureControllerProgress) >> 2] = structure.progress;
+				env.HEAP32[(ptr + structureControllerProgressTotal) >> 2] = structure.progressTotal;
+				env.HEAP32[(ptr + structureControllerTicksToDowngrade) >> 2] = structure.ticksToDowngrade;
+				env.HEAP32[(ptr + structureControllerUpgradeBlocked) >> 2] = structure.upgradeBlocked;
+				break;
+
 			case STRUCTURE_KEEPER_LAIR:
 			case STRUCTURE_PORTAL:
 			case STRUCTURE_POWER_BANK:
 				// indestrubable
+				break;
 			default:
 				// Structure with hit points
 				env.HEAP32[(ptr + structureDestroyableHits) >> 2] = structure.hits;
@@ -461,5 +481,9 @@ const that = module.exports = {
 
 	readResourceType(resourceType) {
 		return resourceReverseEnum.get(resourceType);
+	},
+
+	readStructureType(structureType) {
+		return structureTypeEnumReverse.get(structureType);
 	},
 }

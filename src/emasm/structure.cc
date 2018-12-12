@@ -17,13 +17,20 @@ void structure_t::init() {
 			'owned': {
 				'my': $4,
 			},
+			'controller': {
+				'level': $5,
+				'progress': $6,
+				'progressTotal': $7,
+				'ticksToDowngrade': $8,
+				'upgradeBlocked': $9,
+			},
 			'extension': {
-				'energy': $5,
-				'energyCapacity': $6,
+				'energy': $10,
+				'energyCapacity': $11,
 			},
 			'spawn': {
-				'energy': $7,
-				'energyCapacity': $8,
+				'energy': $12,
+				'energyCapacity': $13,
 			},
 		});
 	},
@@ -35,6 +42,12 @@ void structure_t::init() {
 		offsetof(destroyable_structure_t, hits_max),
 		// owned structure
 		offsetof(owned_structure_t, my),
+		// controller
+		offsetof(controller_t, level),
+		offsetof(controller_t, progress),
+		offsetof(controller_t, progress_total),
+		offsetof(controller_t, ticks_to_downgrade),
+		offsetof(controller_t, upgrade_blocked),
 		// extension
 		offsetof(extension_t, energy),
 		offsetof(extension_t, energy_capacity),

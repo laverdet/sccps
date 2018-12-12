@@ -10,6 +10,7 @@
 namespace screeps {
 
 enum struct bodypart_t {
+	none,
 	attack,
 	carry,
 	claim,

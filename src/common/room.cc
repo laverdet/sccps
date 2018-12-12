@@ -31,4 +31,12 @@ void room_t::update_pointers() {
 	}
 }
 
+int room_t::create_construction_site(position_t pos, structure_t::type_t structure_type, const std::string& name) const {
+	if (pos.room_location() != location) {
+		// JS @screeps/engine doesn't actually check this..
+		return k_err_invalid_args;
+	}
+	return create_construction_site(pos.to_local(), structure_type, name);
+}
+
 } // namespace screeps

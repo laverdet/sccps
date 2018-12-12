@@ -361,6 +361,8 @@ struct coord_base_t {
 struct room_location_t : coord_base_t<room_location_t> {
 	using coord_base_t::coord_base_t;
 
+	constexpr struct position_t operator[](struct local_position_t pos) const;
+
 	const class terrain_t& terrain(class terrain_t* terrain = nullptr) const;
 	friend std::ostream& operator<<(std::ostream& os, room_location_t that);
 };
@@ -587,6 +589,10 @@ struct position_t : coord_base_t<position_t> {
 	}
 
 	constexpr local_position_t to_local() const {
+		return ~*this;
+	}
+
+	constexpr local_position_t operator~() const {
 		return {ux % 50, uy % 50, 0};
 	}
 
@@ -603,8 +609,13 @@ struct position_t : coord_base_t<position_t> {
 	}
 };
 
+// Definitions for methods with cross-dependencies
 constexpr position_t local_position_t::in_room(room_location_t room) const {
 	return {room, *this};
+}
+
+constexpr position_t room_location_t::operator[](local_position_t pos) const {
+	return {*this, pos};
 }
 
 // Matrix of any type which holds a value for each position in a room

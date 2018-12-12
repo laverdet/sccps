@@ -12,6 +12,7 @@ namespace screeps {
 
 struct structure_t : game_object_t {
 	enum type_t {
+		none,
 		container,
 		controller,
 		extension,
@@ -31,6 +32,7 @@ struct structure_t : game_object_t {
 		terminal,
 		tower,
 		wall,
+		size
 	};
 
 	const type_t type; // must be first!

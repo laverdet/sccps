@@ -109,4 +109,22 @@ void room_t::shrink() {
 	});
 }
 
+int room_t::create_construction_site(local_position_t pos, structure_t::type_t structure_type, const std::string& name) const {
+	return EM_ASM_INT({
+		return Game.rooms[
+			Module.screeps.position.generateRoomName($0)
+		].createConstructionSite(
+			$1, $2,
+			Module.screeps.object.readStructureType($3),
+			Module.screeps.string.readOneByteStringData(Module, $4, $5)
+		);
+	},
+		location.id,
+		pos.xx, pos.yy,
+		structure_type,
+		name.data(), name.size()
+	);
+	return 0;
+}
+
 } // namespace screeps
