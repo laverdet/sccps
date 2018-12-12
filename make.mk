@@ -29,8 +29,8 @@ MISSING_SYMBOLS := ___cxa_find_matching_catch ___cxa_find_matching_catch_2 ___cx
 
 # Additional flags for debug or release
 ifeq ($(TARGET), debug)
-CXXFLAGS += -O2 -ftrapv
-EM_CXXFLAGS += -g4
+CXXFLAGS += -ftrapv
+EM_CXXFLAGS += -g4 -O2
 NATIVE_CXXFLAGS += -g
 EMFLAGS += -s ASSERTIONS=1 -g4 -O2
 MAIN_EMFLAGS += -s DEMANGLE_SUPPORT=1
