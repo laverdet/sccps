@@ -47,8 +47,8 @@ struct array_t {
 
 		template <class Memory>
 		void read(Memory& memory) {
-			memory & size_;
-			size_t ii = size_;
+			size_t ii;
+			memory & ii;
 			while (ii-- > 0) {
 				emplace_back(memory.read());
 			}

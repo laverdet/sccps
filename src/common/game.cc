@@ -3,6 +3,16 @@
 
 namespace screeps {
 
+void game_state_t::clear_indices() {
+	construction_sites_by_id.clear();
+	creeps_by_id.clear();
+	creeps_by_name.clear();
+	dropped_resources_by_id.clear();
+	sources_by_id.clear();
+	structures_by_id.clear();
+	tombstones_by_id.clear();
+}
+
 void game_state_t::update_pointers() {
 	construction_site_t* current = nullptr;
 	room_location_t current_location;

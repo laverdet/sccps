@@ -27,8 +27,8 @@ class game_state_t {
 		template <class Identifier, class Base, class Type, Identifier Base::*Property>
 		class index_t {
 			protected:
-				mutable std::unordered_map<Identifier, Type*> index;
-				mutable bool did_index;
+				std::unordered_map<Identifier, Type*> index;
+				bool did_index = false;
 
 				Type* find_in_map(const Identifier& id) {
 					auto ii = index.find(id);
@@ -50,7 +50,7 @@ class game_state_t {
 		class vector_index_t: public index_t<Identifier, Base, Type, Property> {
 			private:
 				template <class Vector>
-				void ensure_index(Vector& vector) const {
+				void ensure_index(Vector& vector) {
 					if (!this->did_index) {
 						this->did_index = true;
 						for (auto& element : vector) {
@@ -76,7 +76,7 @@ class game_state_t {
 		class room_index_t: public index_t<Identifier, Base, Type, Property> {
 			private:
 				template <class Rooms>
-				void ensure_index(Rooms& rooms) const {
+				void ensure_index(Rooms& rooms) {
 					if (!this->did_index) {
 						this->did_index = true;
 						for (auto& [location, room] : rooms) {
@@ -131,6 +131,7 @@ class game_state_t {
 	private:
 		static void init_layout();
 		static void ensure_capacity(game_state_t* game);
+		void clear_indices();
 		void update_pointers();
 		void write_room_pointers();
 
@@ -154,6 +155,7 @@ class game_state_t {
 				update_pointers();
 			}
 			if constexpr (Memory::is_reader) {
+				clear_indices();
 				update_pointers();
 			}
 		}

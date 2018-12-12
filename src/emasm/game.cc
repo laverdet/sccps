@@ -24,15 +24,7 @@ void game_state_t::load() {
 	// Setup pointers for existing rooms
 	room_pointers_memory.reset(room_pointers);
 	write_room_pointers();
-
-	// Clear out `by_id` indices
-	construction_sites_by_id.clear();
-	creeps_by_id.clear();
-	creeps_by_name.clear();
-	dropped_resources_by_id.clear();
-	sources_by_id.clear();
-	structures_by_id.clear();
-	tombstones_by_id.clear();
+	clear_indices();
 
 	// Pass off to JS
 	EM_ASM({
