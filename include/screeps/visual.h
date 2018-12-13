@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <string>
 #include <vector>
 
 namespace screeps {
@@ -49,7 +50,7 @@ struct _visual_structs_t {
 };
 
 struct visual_t {
-	using color_t = _visual_structs_t::poly_t;
+	using color_t = _visual_structs_t::color_t;
 	using line_style_t = _visual_structs_t::line_style_t;
 	using circle_t = _visual_structs_t::poly_t;
 	using line_t = _visual_structs_t::line_t;

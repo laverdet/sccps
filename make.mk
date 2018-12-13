@@ -18,10 +18,8 @@ SPACE := $(NOTHING) $(NOTHING)
 COMMA := ,
 
 # Default compiler flags
-CXXFLAGS += -std=c++17 \
-	-Wall -Wextra -Wno-invalid-offsetof \
-	-isystem $(SCREEPS_PATH)/include -I.
-EMFLAGS += -s STRICT=1 -s DISABLE_EXCEPTION_CATCHING=0 -s ABORTING_MALLOC=0
+SCREEPS_CXXFLAGS := -std=c++17 -Wall -Wextra -Wno-invalid-offsetof -isystem $(SCREEPS_PATH)/include
+EMFLAGS += -s STRICT=1 -s ABORTING_MALLOC=0
 MAIN_EMFLAGS += -s MAIN_MODULE=2 -s ENVIRONMENT=shell -s NO_FILESYSTEM=1 -s TOTAL_MEMORY=201326592
 SIDE_EMFLAGS += -s SIDE_MODULE=1 -s EXPORT_ALL=1
 EXPORTED_FUNCTIONS += __Z4loopv
@@ -29,7 +27,7 @@ MISSING_SYMBOLS := ___cxa_find_matching_catch ___cxa_find_matching_catch_2 ___cx
 
 # Additional flags for debug or release
 ifeq ($(TARGET), debug)
-CXXFLAGS += -ftrapv
+SCREEPS_CXXFLAGS += -ftrapv
 EM_CXXFLAGS += -g4 -O2
 NATIVE_CXXFLAGS += -g
 EMFLAGS += -s ASSERTIONS=1 -g4 -O2
@@ -37,7 +35,7 @@ MAIN_EMFLAGS += -s DEMANGLE_SUPPORT=1
 DYNAMIC_LINK = 1
 else
 ifeq ($(TARGET), release)
-CXXFLAGS += -O3
+SCREEPS_CXXFLAGS += -O3
 EMFLAGS += --llvm-lto 3 -O3
 else
 $(error Invalid target. Must be "debug" or "release" $(TARGET))
@@ -99,8 +97,11 @@ build%/.:
 .PRECIOUS: build/. build%/.
 
 # Bytecode targets
+$(BUILD_PATH)/$(SCREEPS_PATH)/%.bc: $(SCREEPS_PATH)/%.cc | $$(@D)/.
+	$(EMCXX) -c -o $@ $< -MD $(SCREEPS_CXXFLAGS) $(EM_CXXFLAGS)
 $(BUILD_PATH)/%.bc: %.cc | $$(@D)/.
-	$(EMCXX) -c -o $@ $< -MD $(CXXFLAGS) $(EM_CXXFLAGS)
+	$(EMCXX) -c -o $@ $< -MD $(SCREEPS_CXXFLAGS) $(CXXFLAGS) $(EM_CXXFLAGS)
+
 .PRECIOUS: $(BUILD_PATH)/%.bc
 
 # Dynamic library symbol exports
@@ -147,14 +148,17 @@ $(ASMJS)/% $(WASM)/%: $(SCREEPS_PATH)/js/% | $$(@D)/.
 	cp $< $@
 
 # native specifics
+$(BUILD_PATH)/$(SCREEPS_PATH)/%.o: $(SCREEPS_PATH)/%.cc | $$(@D)/.
+	$(CXX) -c -o $@ $< -MD $(SCREEPS_CXXFLAGS) $(NATIVE_CXXFLAGS)
 $(BUILD_PATH)/%.o: %.cc | $$(@D)/.
-	$(CXX) -c -o $@ $< -MD $(CXXFLAGS) $(NATIVE_CXXFLAGS)
+	$(CXX) -c -o $@ $< -MD $(SCREEPS_CXXFLAGS) $(CXXFLAGS) $(NATIVE_CXXFLAGS)
+
 $(BUILD_PATH)/screeps.ar: $$(NATIVE_OBJS)
 	$(AR) rcs $@ $^
 .PRECIOUS: $(BUILD_PATH)/%.o
 
 $(MODULE_NAME): $(BUILD_PATH)/screeps.ar $$(NATIVE_USER_OBJS)
-	$(CXX) -o $@ $^ $(CXXFLAGS) $(NATIVE_CXXFLAGS)
+	$(CXX) -o $@ $^ $(SCREEPS_CXXFLAGS) $(CXXFLAGS) $(NATIVE_CXXFLAGS)
 
 # Cleanups
 clean:
