@@ -92,7 +92,7 @@ class memory_t {
 		memory_t(size_t bytes) : memory(bytes), pos(memory.data()) {}
 
 		operator std::string_view() const {
-			return {reinterpret_cast<const char*>(memory.data()), pos - memory.data()};
+			return {reinterpret_cast<const char*>(memory.data()), static_cast<size_t>(pos - memory.data())};
 		}
 
 		int version() const {

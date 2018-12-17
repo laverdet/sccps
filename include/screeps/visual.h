@@ -16,7 +16,7 @@ struct _visual_structs_t {
 	struct color_t {
 		uint32_t rgba;
 		color_t() : rgba(0) {}
-		color_t(int rgb) : rgba(0xff000000 | rgb & 0xffffff) {}
+		color_t(int rgb) : rgba(0xff000000 | (rgb & 0xffffff)) {}
 		color_t(int rgb, int opacity) : rgba((opacity & 0xff) << 24 | (rgb & 0xffffff)) {}
 	};
 

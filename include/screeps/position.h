@@ -128,7 +128,7 @@ class area_iterable_t {
 	private:
 		class iterator : public random_access_iterator_t<iterator> {
 			private:
-				unsigned int offset = 0, index = 0, width = 0;
+				unsigned int offset = 0, width = 0, index = 0;
 
 			public:
 				using value_type = Type;
@@ -155,7 +155,7 @@ class area_iterable_t {
 					return *this;
 				}
 
-				constexpr iterator operator+(int val) const {
+				constexpr iterator operator+(int) const {
 					return {offset, width, index + 1};
 				}
 		};
@@ -266,7 +266,7 @@ struct coord_base_t {
 	coord_base_t() {};
 	explicit constexpr coord_base_t(uint32_t id) : id(id) {}
 	constexpr coord_base_t(int xx, int yy) : xx(xx), yy(yy) {}
-	constexpr coord_base_t(uint16_t ux, uint16_t uy, int) : ux(ux), uy(uy) {}
+	constexpr coord_base_t(unsigned int ux, unsigned int uy, int) : ux(ux), uy(uy) {}
 
 	template <class Memory>
 	void serialize(Memory& memory) {
@@ -374,7 +374,7 @@ struct local_position_t : coord_base_t<local_position_t> {
 	friend std::ostream& operator<<(std::ostream& os, local_position_t that);
 	constexpr struct position_t in_room(room_location_t room) const;
 
-	constexpr int range_to_edge() const {
+	int range_to_edge() const {
 		return 24 - std::min(
 			std::abs(xx - 24) - xx / 25,
 			std::abs(yy - 24) - yy / 25
@@ -585,7 +585,7 @@ struct position_t : coord_base_t<position_t> {
 	constexpr position_t(room_location_t room, int xx, int yy) : coord_base(room.ux * 50 + xx, room.uy * 50 + yy, 0) {}
 
 	constexpr room_location_t room_location() const {
-		return {ux / 50, uy / 50, 0};
+		return {ux / 50u, uy / 50u, 0};
 	}
 
 	constexpr local_position_t to_local() const {
@@ -593,7 +593,7 @@ struct position_t : coord_base_t<position_t> {
 	}
 
 	constexpr local_position_t operator~() const {
-		return {ux % 50, uy % 50, 0};
+		return {ux % 50u, uy % 50u, 0};
 	}
 
 	friend std::ostream& operator<<(std::ostream& os, position_t that);

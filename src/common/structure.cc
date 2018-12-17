@@ -6,6 +6,8 @@ namespace screeps {
 std::ostream& operator<<(std::ostream& os, const structure_t& that) {
 	os <<"structure_t[";
 	switch (that.type) {
+		case structure_t::none: os<<"none"; break;
+		case structure_t::size: os<<"size"; break;
 		case structure_t::container: os <<"container"; break;
 		case structure_t::controller: os <<"controller"; break;
 		case structure_t::extension: os <<"extension"; break;

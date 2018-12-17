@@ -123,7 +123,7 @@ class room_t {
 
 	private:
 		template <class Function>
-		void invoke_containers_helper(Function& function) {}
+		void invoke_containers_helper(Function& /* function */) {}
 
 		template <class Function, class Container, class Range, class... Rest>
 		void invoke_containers_helper(Function& function, Container& container, Range& range, Rest&... rest) {

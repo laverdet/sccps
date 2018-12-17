@@ -109,11 +109,11 @@ class random_access_iterator_t {
 			return that() + -val;
 		}
 
-		friend inline constexpr T operator+(const int lhs, const T& rhs) {
+		friend inline constexpr T operator+(int lhs, const T& rhs) {
 			return rhs + lhs;
 		}
 
-		friend inline constexpr T operator-(const int lhs, const T& rhs) {
+		friend inline constexpr T operator-(int lhs, const T& rhs) {
 			return rhs + -lhs;
 		}
 };
@@ -121,8 +121,8 @@ class random_access_iterator_t {
 template <typename T>
 class pointer_container_t {
 	private:
-		T* _begin;
-		T* _end;
+		T* _begin = nullptr;
+		T* _end = nullptr;
 
 	public:
 		using value_type = T;
@@ -135,7 +135,7 @@ class pointer_container_t {
 		using iterator = T*;
 		using const_iterator = const T*;
 
-		pointer_container_t() {}
+		constexpr pointer_container_t() = default;
 		constexpr pointer_container_t(T* begin, T* end) : _begin(begin), _end(end) {}
 
 		constexpr reference operator[](size_type index) {
