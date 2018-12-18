@@ -14,9 +14,8 @@ struct _visual_structs_t {
 	// "error: default member initializer for 'width' needed within definition of enclosing class 'visual_t' outside of member functions"
 	// Defining these structures outside the struct they're used in fixes it.
 	struct color_t {
-		uint32_t rgba;
-		color_t() : rgba(0) {}
-		color_t(int rgb) : rgba(0xff000000 | (rgb & 0xffffff)) {}
+		uint32_t rgba = 0;
+		color_t(int rgb) : rgba(0xff000000 | (rgb & 0xffffff)) {} // NOLINT(hicpp-explicit-conversions)
 		color_t(int rgb, int opacity) : rgba((opacity & 0xff) << 24 | (rgb & 0xffffff)) {}
 	};
 
@@ -32,7 +31,7 @@ struct _visual_structs_t {
 	struct poly_t {
 		color_t fill = 0xffffff;
 		float opacity = 0.5;
-		color_t stroke{};
+		color_t stroke = 0;
 		float stroke_width = 0.1;
 		line_style_t line_style = line_style_t::solid;
 	};
@@ -40,9 +39,9 @@ struct _visual_structs_t {
 	struct text_t {
 		color_t color = 0xffffff;
 		std::string font = "";
-		color_t stroke{};
+		color_t stroke = 0;
 		float stroke_width = 0.15;
-		color_t background_color{};
+		color_t background_color = 0;
 		float background_padding = 0.3;
 		std::string align = "center";
 		float opacity = 1;
@@ -60,8 +59,8 @@ struct visual_t {
 
 	struct point_t {
 		float xx, yy;
-		point_t(local_position_t position);
-		point_t(position_t position);
+		point_t(local_position_t position); // NOLINT(hicpp-explicit-conversions)
+		point_t(position_t position); // NOLINT(hicpp-explicit-conversions)
 		constexpr point_t(float xx, float yy) : xx(xx), yy(yy) {}
 		constexpr point_t operator+(point_t that) const {
 			return point_t(xx + that.xx, yy + that.yy);

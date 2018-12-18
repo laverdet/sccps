@@ -36,7 +36,6 @@ struct creep_bodypart_t {
 struct creep_active_bodypart_t {
 	const creep_bodypart_t& part;
 	int hits;
-	creep_active_bodypart_t() = default;
 	creep_active_bodypart_t(const creep_bodypart_t& part, int hits) : part(part), hits(hits) {}
 };
 

@@ -10,8 +10,8 @@ namespace screeps {
 template <int Capacity>
 struct string_t : array_t<char, Capacity> {
 	string_t() = default;
-	string_t(const std::string& string) : array_t<char, Capacity>(string.size(), string.c_str()) {}
-	string_t(const char* data) : array_t<char, Capacity>(strlen(data), data) {}
+	explicit string_t(const std::string& string) : array_t<char, Capacity>(string.size(), string.c_str()) {}
+	explicit string_t(const char* data) : array_t<char, Capacity>(strlen(data), data) {}
 
 	/*
 	template <class Memory>
@@ -21,7 +21,7 @@ struct string_t : array_t<char, Capacity> {
 	}
 	*/
 
-	operator std::string() const {
+	operator std::string() const { // NOLINT(hicpp-explicit-conversions)
 		return std::string(this->data(), this->size());
 	}
 

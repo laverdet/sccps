@@ -33,4 +33,4 @@ void visual_t::draw_text(position_t position, const std::string& text, const vis
 	visual_t::draw_text(position.room_location(), position, text, options);
 }
 
-} // screeps
+} // namespace screeps

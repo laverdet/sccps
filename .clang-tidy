@@ -1,0 +1,10 @@
+---
+Checks:
+'-*,bugprone-*,clang-*,misc-*,modernize-*,performance-*,readability-*,-readability-else-after-return,cppcoreguidelines-slicing,cppcoreguidelines-special-member-functions,hicpp-exception-baseclass,hicpp-explicit-conversions,llvm-namespace-comment'
+CheckOptions:
+  - key:             cppcoreguidelines-special-member-functions.AllowMissingMoveFunctions
+    value:           '1'
+  - key:             cppcoreguidelines-special-member-functions.AllowSoleDefaultDtor
+    value:           '1'
+...
+

@@ -127,4 +127,4 @@ void visual_t::draw_text(room_location_t room, visual_t::point_t origin, const s
 	);
 }
 
-} // screeps
+} // namespace screeps

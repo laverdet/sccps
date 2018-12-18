@@ -28,14 +28,14 @@ typename std::enable_if<std::is_arithmetic<typename std::remove_reference<Number
 */
 
 template <class Memory, typename Number>
-void read(Memory& memory, Number& number, typename serialize_number_t<typename std::decay<Number>::type>::as = 0) {
+void read(Memory& memory, Number& number, typename serialize_number_t<typename std::decay<Number>::type>::as /* sfinae */ = 0) {
 	typename serialize_number_t<typename std::decay<Number>::type>::as tmp;
 	memory.copy(reinterpret_cast<uint8_t*>(&tmp), sizeof(tmp));
 	number = tmp;
 }
 
 template <class Memory, typename Number>
-void write(Memory& memory, Number number, typename serialize_number_t<typename std::decay<Number>::type>::as = 0) {
+void write(Memory& memory, Number number, typename serialize_number_t<typename std::decay<Number>::type>::as /* sfinae */ = 0) {
 	typename serialize_number_t<typename std::decay<Number>::type>::as tmp = number;
 	memory.copy(reinterpret_cast<const uint8_t*>(&tmp), sizeof(tmp));
 }
@@ -89,9 +89,9 @@ class memory_t {
 		int _version = 0;
 
 	public:
-		memory_t(size_t bytes) : memory(bytes), pos(memory.data()) {}
+		explicit memory_t(size_t bytes) : memory(bytes), pos(memory.data()) {}
 
-		operator std::string_view() const {
+		explicit operator std::string_view() const {
 			return {reinterpret_cast<const char*>(memory.data()), static_cast<size_t>(pos - memory.data())};
 		}
 
@@ -117,10 +117,10 @@ class memory_reader_t: public memory_t {
 		// Convenience reader for emplace
 		struct reader_t {
 			memory_reader_t& reader;
-			reader_t(memory_reader_t& reader) : reader(reader) {}
+			explicit reader_t(memory_reader_t& reader) : reader(reader) {}
 			
 			template <class Type>
-			operator Type() {
+			operator Type() { // NOLINT(hicpp-explicit-conversions)
 				Type value;
 				reader >>value;
 				return value;

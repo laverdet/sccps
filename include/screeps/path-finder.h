@@ -38,7 +38,7 @@ struct path_finder_t {
 	};
 	using goals_t = std::vector<goal_t>;
 
-	static result_t search(const position_t origin, const goals_t& goals, const options_t& options);
+	static result_t search(position_t origin, const goals_t& goals, const options_t& options);
 	static const void* callback_trampoline(void* fn, int xx, int yy);
 };
 

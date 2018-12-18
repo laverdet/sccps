@@ -31,8 +31,9 @@ $(BUILD_PATH)/screeps.a: $(NATIVE_OBJS) | compile_flags.txt nothing
 
 # Linter. nb: we can't lint emasm sources because of EMASM macros
 .PHONY: tidy
-tidy: $(NATIVE_SRCS)
-	echo $^ | xargs -n1 $(CLANG_TIDY) -header-filter='.*'
+tidy:
+	git ls-files '*.h' | xargs -J% -n1 ./tmp-hpp.sh $(CLANG_TIDY) % -header-filter='.*' -quiet -warnings-as-errors='*'
+	git ls-files '*.cc' | grep -v emasm | xargs -n1 $(CLANG_TIDY) -quiet -warnings-as-errors='*'
 
 # Cleanups. Exported symbols for dynamic library main are left alone by default because they only
 # affect debug builds and keeping them around makes incremental builds more robust to changes

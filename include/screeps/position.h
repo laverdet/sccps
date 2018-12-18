@@ -53,7 +53,7 @@ class constexpr_neighbor_iteratable_t {
 		Type origin;
 
 	public:
-		constexpr constexpr_neighbor_iteratable_t(Type origin) : origin(origin) {}
+		explicit constexpr constexpr_neighbor_iteratable_t(Type origin) : origin(origin) {}
 
 		constexpr iterator begin() const {
 			return {origin, 0};
@@ -155,7 +155,7 @@ class area_iterable_t {
 					return *this;
 				}
 
-				constexpr iterator operator+(int) const {
+				constexpr iterator operator+(int /* postfix */) const {
 					return {offset, width, index + 1};
 				}
 		};
@@ -263,10 +263,10 @@ struct coord_base_t {
 		};
 	};
 
-	coord_base_t() {};
+	coord_base_t() = default; // NOLINT(hicpp-member-init)
 	explicit constexpr coord_base_t(uint32_t id) : id(id) {}
 	constexpr coord_base_t(int xx, int yy) : xx(xx), yy(yy) {}
-	constexpr coord_base_t(unsigned int ux, unsigned int uy, int) : ux(ux), uy(uy) {}
+	constexpr coord_base_t(unsigned int ux, unsigned int uy, int /* unsigned */) : ux(ux), uy(uy) {}
 
 	template <class Memory>
 	void serialize(Memory& memory) {
@@ -538,7 +538,7 @@ struct local_position_t : coord_base_t<local_position_t> {
 				using reference = local_position_t;
 
 				constexpr iterator() = default;
-				constexpr iterator(int ii) : ii(ii) {}
+				explicit constexpr iterator(int ii) : ii(ii) {}
 
 				constexpr local_position_t operator*() const {
 					return local_position_t(ii % 50, ii / 50);
@@ -558,16 +558,16 @@ struct local_position_t : coord_base_t<local_position_t> {
 				}
 
 				constexpr iterator operator+(int val) const {
-					return {ii + val};
+					return iterator(ii + val);
 				}
 		};
 
 		constexpr iterator begin() const {
-			return {0};
+			return iterator(0);
 		}
 
 		constexpr iterator end() const {
-			return {2500};
+			return iterator(2500);
 		}
 	};
 
@@ -605,7 +605,7 @@ struct position_t : coord_base_t<position_t> {
 		direction_t::left
 	>;
 	constexpr neighbors_iterable neighbors() const {
-		return {*this};
+		return neighbors_iterable{*this};
 	}
 };
 
@@ -631,7 +631,7 @@ class local_matrix_store_t<Type, Store, Pack, false> {
 
 	public:
 		constexpr local_matrix_store_t() = default;
-		constexpr local_matrix_store_t(Type value) {
+		explicit constexpr local_matrix_store_t(Type value) {
 			fill(value);
 		}
 
@@ -681,10 +681,10 @@ class local_matrix_store_t<Type, Store, Pack, true> {
 
 			public:
 				constexpr reference(int bit_pos, Store& ref) : ref(ref), bit_pos(bit_pos) {}
-				constexpr operator Type() const {
+				constexpr operator Type() const { // NOLINT(hicpp-explicit-conversions)
 					return (ref >> bit_pos) & Mask;
 				}
-				constexpr const reference& operator=(Type value) const {
+				constexpr reference& operator=(Type value) {
 					ref = (ref & ~(Mask << bit_pos)) | ((value & Mask) << bit_pos);
 					return *this;
 				}
@@ -698,7 +698,7 @@ class local_matrix_store_t<Type, Store, Pack, true> {
 			costs.back() = 0;
 		}
 
-		constexpr local_matrix_store_t(Type value) {
+		explicit constexpr local_matrix_store_t(Type value) {
 			costs.back() = 0;
 			fill(value);
 		}
@@ -748,7 +748,7 @@ class local_matrix_t : public local_matrix_store_t<Type, Store, Pack> {
 
 		template <class Memory>
 		void serialize(Memory& memory) {
-			uint8_t* data = reinterpret_cast<uint8_t*>(this->costs.data());
+			auto data = reinterpret_cast<uint8_t*>(this->costs.data());
 			memory.copy(data, reinterpret_cast<uint8_t*>(this->costs.data() + this->costs.size()) - data);
 		}
 

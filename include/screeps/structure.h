@@ -85,7 +85,7 @@ union structure_union_t {
 	extension_t extension;
 	spawn_t spawn;
 
-	structure_union_t() {}
+	structure_union_t() {}; // NOLINT(modernize-use-equals-default)
 
 	template <class Memory>
 	void serialize(Memory& memory) {
@@ -113,11 +113,11 @@ union structure_union_t {
 		}
 	}
 
-	operator game_object_t&() {
+	operator game_object_t&() { // NOLINT(hicpp-explicit-conversions)
 		return *reinterpret_cast<game_object_t*>(this);
 	}
 
-	operator const game_object_t&() const {
+	operator const game_object_t&() const { // NOLINT(hicpp-explicit-conversions)
 		return *reinterpret_cast<const game_object_t*>(this);
 	}
 };

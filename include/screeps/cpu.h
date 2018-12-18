@@ -1,5 +1,5 @@
 #pragma once
-#include <stddef.h>
+#include <cstddef>
 
 namespace screeps::cpu {
 	struct native_heap_t {

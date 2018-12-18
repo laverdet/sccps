@@ -18,4 +18,4 @@ void visual_t::draw_rect(room_location_t /* room */, point_t /* pos */, float /*
 void visual_t::draw_text(room_location_t /* room */, visual_t::point_t /* origin */, const std::string& /* text */, const visual_t::text_t& /* options */) {
 }
 
-} // screeps
+} // namespace screeps
