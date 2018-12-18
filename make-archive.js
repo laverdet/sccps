@@ -5,25 +5,36 @@
 // for us too.
 const fs = require('fs');
 const path = require('path');
-let relative = process.argv[2];
-let ws = fs.createWriteStream(process.argv[3]);
-process.argv.slice(4).forEach(function(name) {
-	fs.readFile(name, function(err, data) {
-		if (err) {
-			throw err;
-		}
-		if (name.substr(0, relative.length) !== relative) {
-			throw new Error(`Path not relative: ${name}`);
-		}
-		name = name.substr(relative.length + 1);
-		let header = new Uint8Array(name.length + 8);
-		let headerView = new DataView(header.buffer);
-		headerView.setUint32(0, name.length);
-		for (let ii = 0; ii < name.length; ++ii) {
-			header[ii + 4] = name.charCodeAt(ii);
-		}
-		headerView.setUint32(name.length + 4, data.length);
-		ws.write(header);
-		ws.write(data);
-	});
+let ws = fs.createWriteStream(process.argv[2]);
+let relative;
+for (let ii = 3; ii < process.argv.length; ++ii) {
+	let arg = process.argv[ii];
+	if (arg == '--relative') {
+		relative = process.argv[++ii];
+	} else {
+		fs.readFile(arg, function(relative, err, data) {
+			if (err) {
+				throw err;
+			}
+			if (arg.substr(0, relative.length) !== relative) {
+				throw new Error(`Path not relative: ${arg} to ${relative}`);
+			}
+			arg = arg.substr(relative.length + 1);
+			let header = new Uint8Array(arg.length + 8);
+			let headerView = new DataView(header.buffer);
+			headerView.setUint32(0, arg.length);
+			for (let ii = 0; ii < arg.length; ++ii) {
+				header[ii + 4] = arg.charCodeAt(ii);
+			}
+			headerView.setUint32(arg.length + 4, data.length);
+			ws.write(header);
+			ws.write(data);
+		}.bind(null, relative));
+	}
+}
+
+// Delete output on error
+process.on('uncaughtException', function(err) {
+	fs.unlinkSync(process.argv[2]);
+	throw err;
 });

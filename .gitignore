@@ -1,0 +1,6 @@
+/build
+/compile_flags.txt
+/dylib-symbols
+/dylib-symbols.marker
+/node_modules
+/package-lock.json

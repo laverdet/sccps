@@ -164,13 +164,13 @@ function* initialize() {
 				data = inflate.inflate(data);
 			}
 			// Handle files
-			if (name === 'screeps/asmjs.js' || name === 'screeps/wasm.js') {
+			if (name === 'asmjs.js' || name === 'wasm.js') {
 				runtime = function(module) {
 					global.Module = module;
 					evalWithName(eval, name, maybeBufferToString(data));
 					return module;
 				};
-			} else if (name === 'screeps/wasm.wasm') {
+			} else if (name === 'wasm.wasm') {
 				isAsmjs = false;
 				wasm = data;
 			} else if (name.substr(-9) === '.dylib.js') {

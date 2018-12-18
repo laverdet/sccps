@@ -60,6 +60,8 @@ terminate
 __gxx_personality_v0
 __gcc_personality_v0
 __cxa_find_matching_catch
+__cxa_find_matching_catch_2
+__cxa_find_matching_catch_3
 __resumeException
 __errno_location
 llvm_stacksave
