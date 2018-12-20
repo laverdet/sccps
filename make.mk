@@ -60,7 +60,7 @@ $(ASMJS)/$(MODULE_NAME).wasm: $(SCREEPS_PATH)/$(BUILD_PATH)/asmjs.js.deflate $$(
 		--relative $(BUILD_PATH) $(DYLIB_ASMJS_OBJS) $(DYLIB_MAPS)
 
 # wasm package
-$(BUILD_PATH)/$(SCREEPS_PATH)/wasm.wasm: $(BUILD_PATH)/screeps/wasm.js
+$(BUILD_PATH)/$(SCREEPS_PATH)/wasm.wasm: $(BUILD_PATH)/$(SCREEPS_PATH)/wasm.js
 $(WASM)/$(MODULE_NAME).wasm: $(BUILD_PATH)/$(SCREEPS_PATH)/wasm.js.deflate $(BUILD_PATH)/$(SCREEPS_PATH)/wasm.wasm.deflate | $$(@D)/.
 	$(MAKE_ARCHIVE) $@ --relative $(BUILD_PATH)/$(SCREEPS_PATH) $^
 
@@ -76,7 +76,7 @@ $(SCREEPS_TARGETS): $(SCREEPS_PATH)/%: nothing
 
 # Cleanups
 .PHONY: clean very-clean
-clean: screeps/clean
+clean: $(SCREEPS_PATH)/clean
 	$(RM) -rf build
-very-clean: screeps/very-clean
+very-clean: $(SCREEPS_PATH)/very-clean
 	$(RM) -rf build
