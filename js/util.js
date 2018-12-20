@@ -1,5 +1,7 @@
 'use strict';
 const StringLib = require('string');
+let handleMap = new Map;
+let handleId = 0;
 
 const that = module.exports = {
 	getObjectById(env, id) {
@@ -17,6 +19,20 @@ const that = module.exports = {
 				return map;
 			}, new Map)),
 		];
+	},
+
+	handleCtor(value) {
+		let ii = ++handleId;
+		handleMap.set(handleId, value);
+		return ii;
+	},
+
+	handleDtor(id) {
+		handleMap.delete(id);
+	},
+
+	handleGet(id) {
+		return handleMap.get(id);
 	},
 
 	toColor(color) {

@@ -1,7 +1,11 @@
 #pragma once
-#include <cstdint>
 #include "./creep.h"
 #include "./object.h"
+#include "./internal/js_handle.h"
+#include <cstdint>
+#include <initializer_list>
+#include <iterator>
+#include <vector>
 
 namespace screeps {
 
@@ -64,10 +68,25 @@ struct extension_t : owned_structure_t {
 };
 
 struct spawn_t : owned_structure_t {
+	// Stores `body` option for `spawn_creep`. Body description is not available to C++ after
+	// construction.
+	struct body_t : internal::js_handle_t {
+		body_t() = default;
+		explicit body_t(const std::vector<bodypart_t>& parts);
+
+		template <class Iterator>
+		body_t(Iterator begin, Iterator end) : body_t(std::vector<bodypart_t>(begin, end)) {}
+
+		template <class Container>
+		explicit body_t(const Container& container) : body_t(container.begin(), container.end()) {}
+
+		body_t(std::initializer_list<bodypart_t> list) : body_t(list.begin(), list.end()) {}
+	};
+
 	int32_t energy;
 	int32_t energy_capacity;
 
-	int spawn_creep(const creep_body_t& body, const std::string& name) const;
+	int spawn_creep(const body_t& body, const std::string& name) const;
 };
 
 // Used to reserve enough space in the array memory for any structure

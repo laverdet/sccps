@@ -473,10 +473,8 @@ const that = module.exports = {
 		}
 	},
 
-	readCreepBodyPartArray(env, ptr) {
-		return ArrayLib.map(env, ptr, 4, function(env, ptr) {
-			return bodyPartEnumReverse.get(env.HEAP32[ptr >> 2]);
-		});
+	readCreepBodyPart(bodyPart) {
+		return bodyPartEnumReverse.get(bodyPart);
 	},
 
 	readResourceType(resourceType) {

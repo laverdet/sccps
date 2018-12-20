@@ -2,7 +2,10 @@
 
 namespace screeps {
 
-int spawn_t::spawn_creep(const creep_body_t& /* body */, const std::string& name) const {
+spawn_t::body_t::body_t(const std::vector<bodypart_t>& /* parts */) : internal::js_handle_t(0) {
+}
+
+int spawn_t::spawn_creep(const body_t& /* body */, const std::string& name) const {
 	std::cerr <<*this <<".spawn_creep(..., \"" <<name <<"\")\n";
 	return 0;
 }

@@ -21,8 +21,6 @@ enum struct bodypart_t {
 	work,
 };
 
-using creep_body_t = array_t<bodypart_t, kMaxCreepSize>;
-
 struct creep_bodypart_t {
 	resource_t boost;
 	bodypart_t type;

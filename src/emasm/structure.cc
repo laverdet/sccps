@@ -60,13 +60,25 @@ void structure_t::init() {
 /**
  * spawn_t
  */
-int spawn_t::spawn_creep(const creep_body_t& body, const std::string& name) const {
+spawn_t::body_t:: body_t(const std::vector<bodypart_t>& parts) : internal::js_handle_t([&]() {
+	return EM_ASM_INT({
+		var body = [];
+		var ptr = $0 >> 2;
+		for (var ii = 0; ii < $1; ++ii) {
+			body.push(Module.screeps.object.readCreepBodyPart(Module.HEAP32[ptr + ii]));
+		}
+		return Module.screeps.util.handleCtor(body);
+	}, parts.data(), parts.size());
+}()) {
+}
+
+int spawn_t::spawn_creep(const body_t& body, const std::string& name) const {
 	return EM_ASM_INT({
 		return Module.screeps.util.getObjectById(Module, $0).spawnCreep(
-			Module.screeps.object.readCreepBodyPartArray(Module, $1),
+			Module.screeps.util.handleGet($1),
 			Module.screeps.string.readOneByteStringData(Module, $2, $3)
 		);
-	}, &this->id, &body, name.c_str(), name.length());
+	}, &this->id, internal::js_handle_t::get_ref(body), name.c_str(), name.length());
 }
 
 } // namespace screeps
