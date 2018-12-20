@@ -15,8 +15,9 @@ struct _visual_structs_t {
 	// Defining these structures outside the struct they're used in fixes it.
 	struct color_t {
 		uint32_t rgba = 0;
-		color_t(int rgb) : rgba(0xff000000 | (rgb & 0xffffff)) {} // NOLINT(hicpp-explicit-conversions)
-		color_t(int rgb, int opacity) : rgba((opacity & 0xff) << 24 | (rgb & 0xffffff)) {}
+		constexpr color_t() = default;
+		constexpr color_t(int rgb) : rgba(0xff000000 | (rgb & 0xffffff)) {} // NOLINT(hicpp-explicit-conversions)
+		constexpr color_t(int rgb, int opacity) : rgba((opacity & 0xff) << 24 | (rgb & 0xffffff)) {}
 	};
 
 	enum struct line_style_t { solid, dashed, dotted };
