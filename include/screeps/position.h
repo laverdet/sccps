@@ -438,7 +438,7 @@ struct local_position_t : coord_base_t<local_position_t> {
 			return dynamic_neighbor_iterable_t<local_position_t>::factory<
 				direction_t::top_left, direction_t::top, direction_t::top_right,
 				direction_t::right,
-				direction_t::bottom_right, direction_t::bottom, direction_t::bottom_left, 
+				direction_t::bottom_right, direction_t::bottom, direction_t::bottom_left,
 				direction_t::left
 			>(*this);
 		}
