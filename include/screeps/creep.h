@@ -20,6 +20,7 @@ enum struct bodypart_t {
 	tough,
 	work,
 };
+std::ostream& operator<<(std::ostream& os, bodypart_t type);
 
 struct creep_bodypart_t {
 	resource_t boost;

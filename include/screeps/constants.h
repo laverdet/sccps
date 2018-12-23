@@ -31,6 +31,21 @@ constexpr int k_err_not_enough_extensions = -6;
 constexpr int k_err_rcl_not_enough = -14;
 constexpr int k_err_gcl_not_enough = -15;
 
+constexpr int k_bodypart_cost[] = {
+	-1, // none
+	80, // attack
+	50, // carry
+	600, // claim
+	250, // heal
+	50, // move
+	150, // ranged_attack
+	10, // tough
+	100, // work
+};
+
+constexpr int k_extension_energy_capacity[] = {-1, 50, 50, 50, 50, 50, 50, 100, 200};
+constexpr int k_spawn_energy_capacity = 300;
+
 constexpr int k_controller_levels[] = {-1, 200, 45000, 135000, 405000, 1215000, 3645000, 10935000, -1};
 constexpr int k_controller_structures[][9] = {
 	// none

@@ -111,6 +111,7 @@ let mineralAmount, mineralDensity, mineralType, mineralTicksToRegeneration;
 // room_t
 let roomLocation;
 let roomConstructionSites, roomCreeps, roomDroppedResources, roomSources, roomStructures, roomTombstones;
+let roomEnergyAvailable, roomEnergyCapacityAvailable;
 let roomMineral, roomMineralHolder;
 
 // source_t
@@ -203,6 +204,8 @@ const that = module.exports = {
 
 	initRoomLayout(layout) {
 		roomLocation = layout.location;
+		roomEnergyAvailable = layout.energyAvailable;
+		roomEnergyCapacityAvailable = layout.energyCapacityAvailable;
 		roomCreeps = layout.creeps;
 		roomDroppedResources = layout.droppedResources;
 		roomSources = layout.sources;
@@ -309,6 +312,8 @@ const that = module.exports = {
 	writeRoom(env, ptr, roomId, room) {
 		// Write room data
 		env.HEAP32[(ptr + roomLocation) >> 2] = roomId;
+		env.HEAP32[(ptr + roomEnergyAvailable) >> 2] = room.energyAvailable;
+		env.HEAP32[(ptr + roomEnergyCapacityAvailable) >> 2] = room.energyCapacityAvailable;
 
 		// Ensure vector capacity
 		let creeps = room.find(FIND_CREEPS);
