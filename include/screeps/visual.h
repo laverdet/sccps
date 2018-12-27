@@ -32,7 +32,7 @@ struct _visual_structs_t {
 	struct poly_t {
 		color_t fill = 0xffffff;
 		float opacity = 0.5;
-		color_t stroke = 0;
+		color_t stroke = {};
 		float stroke_width = 0.1;
 		line_style_t line_style = line_style_t::solid;
 	};
@@ -40,9 +40,9 @@ struct _visual_structs_t {
 	struct text_t {
 		color_t color = 0xffffff;
 		std::string font = "";
-		color_t stroke = 0;
+		color_t stroke = {};
 		float stroke_width = 0.15;
-		color_t background_color = 0;
+		color_t background_color = {};
 		float background_padding = 0.3;
 		std::string align = "center";
 		float opacity = 1;
