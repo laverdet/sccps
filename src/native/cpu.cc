@@ -41,6 +41,16 @@ struct zone_malloc_overwrite_t {
 		default_zone->free_definite_size = zone_free_definite_size;
 		vm_protect(self, (vm_address_t)default_zone, sizeof(malloc_zone_t), 0, VM_PROT_READ);
 	}
+
+	~zone_malloc_overwrite_t() {
+		malloc_zone_t* default_zone = malloc_default_zone();
+		mach_port_t self = mach_task_self();
+		vm_protect(self, (vm_address_t)default_zone, sizeof(malloc_zone_t), 0, VM_PROT_READ | VM_PROT_WRITE);
+		default_zone->malloc = default_malloc;
+		default_zone->free = default_free;
+		default_zone->free_definite_size = default_free_definite_size;
+		vm_protect(self, (vm_address_t)default_zone, sizeof(malloc_zone_t), 0, VM_PROT_READ);
+	}
 };
 static zone_malloc_overwrite_t ctor;
 #endif
