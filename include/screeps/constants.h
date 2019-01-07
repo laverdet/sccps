@@ -43,6 +43,20 @@ constexpr int k_bodypart_cost[] = {
 	100, // work
 };
 
+constexpr int k_carry_capacity = 50;
+constexpr int k_harvest_power = 2;
+constexpr int k_harvest_mineral_power = 1;
+constexpr int k_repair_power = 2;
+constexpr int k_dismantle_power = 50;
+constexpr int k_build_power = 5;
+constexpr int k_attack_power = 30;
+constexpr int k_upgrade_controller_power = 1;
+constexpr int k_ranged_attack_power = 1;
+constexpr int k_heal_power = 12;
+constexpr int k_ranged_heal_power = 4;
+constexpr float k_repair_cost = 0.01f;
+constexpr float k_dismantle_cost = 0.005f;
+
 constexpr int k_extension_energy_capacity[] = {-1, 50, 50, 50, 50, 50, 50, 100, 200};
 constexpr int k_spawn_energy_capacity = 300;
 

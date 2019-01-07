@@ -1,0 +1,7 @@
+{
+  "name": "screepsmod_ivm_dlopen",
+  "version": "1.0.0",
+  "main": "main.js",
+  "license": "ISC",
+  "private": true
+}

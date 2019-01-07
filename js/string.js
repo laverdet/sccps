@@ -2,13 +2,13 @@
 const that = module.exports = {
 	writeOneByteStringData(env, ptr, str) {
 		for (let ii = 0; ii < str.length; ++ii) {
-			env.HEAPU8[(ptr++) >> 0] = str.charCodeAt(ii);
+			env.HEAPU8[ptr++] = str.charCodeAt(ii);
 		}
 	},
 
 	writeOneByteString(env, ptr, str) {
-		env.HEAPU32[ptr >> 2] = str.length;
-		that.writeOneByteStringData(env, ptr + 4, str);
+		env.writeUint32(ptr, str.length);
+		that.writeOneByteStringData(env, ptr + env.ptrSize, str);
 	},
 
 	readOneByteStringData(env, ptr, length) {
@@ -77,6 +77,6 @@ const that = module.exports = {
 	},
 
 	readOneByteString(env, ptr) {
-		return that.readOneByteStringData(env, ptr + 4, env.HEAPU32[ptr >> 2]);
+		return that.readOneByteStringData(env, ptr + env.ptrSize, env.readUint32(ptr));
 	},
 };

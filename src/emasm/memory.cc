@@ -1,5 +1,5 @@
 #include <screeps/memory.h>
-#include <emscripten.h>
+#include "./javascript.h"
 
 namespace screeps {
 

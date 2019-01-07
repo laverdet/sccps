@@ -5,7 +5,7 @@ namespace serialization {
 
 template <class Memory, class Type, class Allocator>
 void read(Memory& memory, std::vector<Type, Allocator>& vector) {
-	size_t size;
+	uint32_t size;
 	memory & size;
 	vector.reserve(size);
 	while (size-- > 0) {

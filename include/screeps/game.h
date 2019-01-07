@@ -128,9 +128,11 @@ class game_state_t {
 		container_t<construction_site_t> construction_sites;
 		container_t<flag_t> flags;
 
-	private:
+	public:
 		static void init_layout();
 		static void ensure_capacity(game_state_t* game);
+
+	private:
 		void clear_indices();
 		void update_pointers();
 		void write_room_pointers();

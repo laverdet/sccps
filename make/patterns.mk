@@ -2,20 +2,20 @@
 include $(shell find build -name '*.d' 2>/dev/null)
 
 # Directory creation
-.PRECIOUS: build/. build%/.
-build/.:
+.PRECIOUS: . %/.
+.:
 	mkdir -p $@
-build%/.:
+%/.:
 	mkdir -p $@
 
 # Bytecode targets
 .PRECIOUS: $(BUILD_PATH)/%.bc
-$(BUILD_PATH)/%.bc: %.cc | $$(@D)/.
+$(BUILD_PATH)/%.bc: %.cc | $$(@D)/. compile_flags.txt
 	$(EMCXX) -c -o $@ $< -MD $(CXXFLAGS) $(EM_CXXFLAGS)
 
 # Native object files
 .PRECIOUS: $(BUILD_PATH)/%.o
-$(BUILD_PATH)/%.o: %.cc | $$(@D)/.
+$(BUILD_PATH)/%.o: %.cc | $$(@D)/. compile_flags.txt
 	$(CXX) -c -o $@ $< -MD $(CXXFLAGS) $(NATIVE_CXXFLAGS)
 
 # Dynamic library symbol exports
@@ -52,7 +52,7 @@ nothing:
 	@:
 
 # llvm tools compile flags
-compile_flags.txt: $(MAKEFILE_LIST)
+compile_flags.txt: $(filter-out %.d,$(MAKEFILE_LIST))
 	echo $(CXXFLAGS) | xargs -n1 echo > $@
 	CPP="$$($(CXX) -E -xc++ - -v < /dev/null 2>&1)"; \
 	echo "$$CPP" | grep -A100 '#include "..." search starts here:' | \

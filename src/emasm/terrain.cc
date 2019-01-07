@@ -1,12 +1,12 @@
 #include <screeps/terrain.h>
-#include <emscripten.h>
+#include "./javascript.h"
 
 namespace screeps {
 
 terrain_t::terrain_t(room_location_t room) {
 	EM_ASM({
 		var roomName = Module.screeps.position.generateRoomName($0);
-		var view = new Uint8Array(Module.buffer, $1, 625);
+		var view = Module.HEAP8.subarray($1, $1 + 625);
 		view.fill(0);
 		var terrain = Game.map.getRoomTerrain(roomName);
 		for (var xx = 0; xx < 50; ++xx) {

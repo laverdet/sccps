@@ -1,5 +1,5 @@
 #include <screeps/path-finder.h>
-#include <emscripten.h>
+#include "./javascript.h"
 
 namespace screeps {
 
@@ -24,7 +24,7 @@ path_finder_t::result_t path_finder_t::search(const position_t origin, const std
 		var result = PathFinder.search(
 			Module.screeps.position.read(Module, $0),
 			Module.screeps.vector.map(Module, $1, $2, 4, function(env, ptr) {
-				return { pos: Module.screeps.position.read(env, ptr), range: env.HEAP32[(ptr + 4) >> 2] };
+				return { pos: Module.screeps.position.read(env, ptr), range: env.readInt32(ptr + 4) };
 			}),
 			{
 				plainCost: $3,
@@ -38,9 +38,9 @@ path_finder_t::result_t path_finder_t::search(const position_t origin, const std
 			}
 		);
 		Module.screeps.array.write(Module, $11, 4, 1500, result.path, Module.screeps.position.write);
-		Module.HEAP32[$12 >> 2] = result.ops;
-		Module.HEAP32[$13 >> 2] = result.cost;
-		Module.HEAP8[$14 >> 0] = result.incomplete;
+		Module.writeInt32($12, result.ops);
+		Module.writeInt32($13, result.cost);
+		Module.writeInt8($14, result.incomplete);
 	},
 		&origin.xx,
 		goals.data(), goals.size(),

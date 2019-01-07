@@ -7,7 +7,10 @@ class js_handle_t {
 	private:
 		struct js_handle_ref_t {
 			int ref;
-			explicit js_handle_ref_t(int ref) : ref(ref) {}
+#ifndef __EMSCRIPTEN__
+			void* isolate;
+#endif
+			explicit js_handle_ref_t(int ref);
 			js_handle_ref_t(const js_handle_ref_t&) = default;
 			js_handle_ref_t& operator=(const js_handle_ref_t&) = default;
 			~js_handle_ref_t();

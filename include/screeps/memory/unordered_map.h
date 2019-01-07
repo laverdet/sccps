@@ -6,7 +6,7 @@ namespace serialization {
 
 template <class Memory, class Key, class Value, class Hash, class KeyEqual, class Allocator>
 void read(Memory& memory, std::unordered_map<Key, Value, Hash, KeyEqual, Allocator>& map) {
-	size_t size;
+	uint32_t size;
 	memory & size;
 	map.reserve(size);
 	while (size-- > 0) {

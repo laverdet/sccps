@@ -21,7 +21,10 @@ struct array_t {
 		using const_reverse_iterator = typename A::const_reverse_iterator;
 
 	private:
-		uint32_t size_ = 0;
+		union {
+			size_type size_ = 0;
+			size_t _align_size_;
+		};
 		A store{};
 
 	public:
@@ -47,7 +50,7 @@ struct array_t {
 
 		template <class Memory>
 		void read(Memory& memory) {
-			size_t ii;
+			size_type ii;
 			memory & ii;
 			while (ii-- > 0) {
 				emplace_back(memory.read());

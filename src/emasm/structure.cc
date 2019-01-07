@@ -1,5 +1,5 @@
+#include "./javascript.h"
 #include <screeps/structure.h>
-#include <emscripten.h>
 
 namespace screeps {
 
@@ -63,9 +63,8 @@ void structure_t::init() {
 spawn_t::body_t:: body_t(const std::vector<bodypart_t>& parts) : internal::js_handle_t([&]() {
 	return EM_ASM_INT({
 		var body = [];
-		var ptr = $0 >> 2;
 		for (var ii = 0; ii < $1; ++ii) {
-			body.push(Module.screeps.object.readCreepBodyPart(Module.HEAP32[ptr + ii]));
+			body.push(Module.screeps.object.readCreepBodyPart(Module.readInt32($0 + ii * 4)));
 		}
 		return Module.screeps.util.handleCtor(body);
 	}, parts.data(), parts.size());

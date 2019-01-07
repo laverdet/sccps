@@ -1,6 +1,6 @@
 #include <screeps/position.h>
 #include <screeps/visual.h>
-#include <emscripten.h>
+#include "./javascript.h"
 
 namespace screeps {
 
@@ -52,8 +52,8 @@ void visual_t::draw_line(room_location_t room, point_t p1, point_t p2, const lin
 void visual_t::draw_poly(room_location_t room, const std::vector<point_t>& points, const poly_t& options) {
 	EM_ASM({
 		var points = [];
-		for (var ptr = $1; ptr != $2; ptr += 2) {
-			points.push([ Module.HEAPF32[ptr], Module.HEAPF32[ptr + 1] ]);
+		for (var ptr = $1; ptr != $2; ptr += 8) {
+			points.push([ Module.readFloat32(ptr), Module.readFloat32(ptr + 4) ]);
 		}
 		Module.screeps.position.getVisual($0).poly(
 			points, {
@@ -66,7 +66,8 @@ void visual_t::draw_poly(room_location_t room, const std::vector<point_t>& point
 		);
 	},
 		room.id,
-		reinterpret_cast<int>(points.data()) >> 2, reinterpret_cast<int>(points.data() + points.size()) >> 2,
+		points.data(),
+		points.data() + points.size(),
 		options.fill.rgba,
 		options.opacity,
 		options.stroke.rgba,

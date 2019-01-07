@@ -1,6 +1,6 @@
 #include <screeps/cpu.h>
+#ifdef __EMSCRIPTEN__
 #include <emscripten.h>
-
 static screeps::cpu::native_heap_t heap_status;
 
 extern "C" {
@@ -35,3 +35,6 @@ namespace screeps::cpu {
 	}
 
 } // namespace screeps::cpu
+#else
+#include "../native/cpu.cc"
+#endif

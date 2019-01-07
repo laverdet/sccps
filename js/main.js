@@ -1,92 +1,5 @@
 'use strict';
-let { flush, print } = function() {
-	const kMaxLinesPerTick = 90;
-	const kShowOmittedLines = 10;
-	let lineCount, skippedCount;
-	let lastLine, lastStream;
-	let lineRepeat;
-	let skipTick;
-	let omittedLines;
-
-	function reset() {
-		lineCount = 0;
-		lastLine = undefined;
-		lineRepeat = 0;
-		skippedCount = 0;
-		skipTick = Game.time
-	}
-
-	function printLine(stream, line) {
-		if (stream === 0) {
-			console.log(`<span style="white-space:normal">${line}</span>`);
-		} else if (stream === 2) {
-			console.log(`<span style="white-space:normal;color:#e79da7">${line}</span>`);
-		} else {
-			throw new Error(`Unknown output stream ${stream}`);
-		}
-	}
-
-	function notifyRepeat(count, lastTick) {
-		console.log(`<span style="color:#ffc66d">[Line repeated <b>${count}</b> time${count > 1 ? 's' : ''}${lastTick ? ' on previous tick' : ''}]</span>`);
-	}
-
-	reset();
-	return {
-		print(stream, line) {
-			line = `${line}`;
-			if (lineCount < kMaxLinesPerTick) {
-				if (line === lastLine && lastStream === stream) {
-					++lineRepeat;
-					return;
-				} else if (lineRepeat > 0) {
-					if (lineRepeat === 1) {
-						printLine(stream, lastLine);
-					} else {
-						notifyRepeat(lineRepeat, false);
-					}
-					lastLine = undefined;
-					lineRepeat = 0;
-				}
-			}
-			if (++lineCount > kMaxLinesPerTick) {
-				if (omittedLines === undefined) {
-					omittedLines = [{ stream, line }];
-				} else {
-					omittedLines.push({ stream, line });
-					if (omittedLines.length > kShowOmittedLines * 2) {
-						omittedLines.splice(0, kShowOmittedLines);
-					}
-				}
-				++skippedCount;
-			} else {
-				printLine(stream, line);
-				lastLine = line;
-				lastStream = stream;
-			}
-		},
-
-		flush() {
-			if (lineRepeat === 1) {
-				printLine(lastStream, lastLine);
-			} else if (lineRepeat > 0) {
-				notifyRepeat(lineRepeat, skipTick !== Game.time);
-			} else if (skippedCount > 0) {
-				let showOmittedCount = Math.max(0, omittedLines.length - kShowOmittedLines);
-				skippedCount -= showOmittedCount;
-				if (skippedCount > 0) {
-					console.log(`<span style="color:#ffc66d">[Omitted <b>${skippedCount}</b> line${skippedCount > 1 ? 's' : ''}${Game.time !== skipTick ? ' on previous tick' : ''}]</span>`);
-				}
-				for (let ii = Math.max(0, omittedLines.length - kShowOmittedLines); ii < omittedLines.length; ++ii) {
-					printLine(omittedLines[ii].stream, omittedLines[ii].line);
-				}
-				if (Game.time !== skipTick) {
-					console.log(`<span style="color:#ffc66d">[Output from current tick follows]</span>`);
-				}
-			}
-			reset();
-		}
-	};
-}();
+let { flush, print } = require('console');
 
 function bufferToString(buffer) {
 	const kChunkSize = 4096;
@@ -116,6 +29,68 @@ global.trace = function trace(message) {
 	let stack = { message };
 	Error.captureStackTrace(stack, trace);
 	console.log(stack.stack);
+}
+
+// Handles proxy objects which act like emscripten's HEAP* objects but over a 64-bit range. Only works up to SMI 53-bit though..
+function makeHeapProxies(mod) {
+	let map = new Map;
+	function getArrayBuffer(ptr) {
+		let val = map.get(ptr);
+		if (val === undefined) {
+			map.set(ptr, val = mod.makeArrayBuffer(ptr));
+		}
+		return val;
+	}
+
+	function makeProxy(ctor, size) {
+		// Max typed array length is 0x7fffffff
+		const segmentSize = 0x40000000;
+		let map = new Map;
+		function getView(index) {
+			index = Math.floor(index / segmentSize);
+			let val = map.get(index);
+			if (val === undefined) {
+				let ab = getArrayBuffer(index * segmentSize * (1 << (size - 1)));
+				map.set(index, val = new ctor(ab, 0, segmentSize));
+			}
+			return val;
+		}
+		return new Proxy({
+			subarray(offset, end) {
+				let ab = getView(offset);
+				if (ab !== getView(end)) {
+					throw new Error('Subarray slices two segments');
+				}
+				return ab.subarray(offset % segmentSize, end % segmentSize);
+			},
+		}, {
+			get(that, prop) {
+				let index = Number(prop);
+				if (index === index) {
+					return getView(index)[index % segmentSize];
+				} else {
+					return that[prop];
+				}
+			},
+			set(that, prop, val) {
+				let index = Number(prop);
+				if (index === index) {
+					getView(index)[index % segmentSize] = val;
+					return true;
+				} else {
+					return false;
+				}
+			},
+		});
+	}
+
+	mod.HEAP8 = makeProxy(Int8Array, 1);
+	mod.HEAPU8 = makeProxy(Uint8Array, 1);
+	mod.HEAP16 = makeProxy(Int16Array, 2);
+	mod.HEAPU16 = makeProxy(Uint16Array, 2);
+	mod.HEAP32 = makeProxy(Int32Array, 3);
+	mod.HEAPU32 = makeProxy(Uint32Array, 3);
+	mod.HEAPF32 = makeProxy(Float32Array, 3);
 }
 
 let asmjsArchive, buffer;
@@ -183,6 +158,8 @@ function* initialize() {
 				throw new Error(`Unhandled file: ${name}`);
 			}
 		}
+	} else {
+		runtime = info;
 	}
 	yield 'extract';
 
@@ -197,181 +174,116 @@ function* initialize() {
 	};
 	yield 'lib';
 
-	// Missing function =o
-	global.invoke_X = function(...args) {
-		return Module['wasmTable'].get(args[0]).apply(null, args.slice(1));
-	}
-
-	// Start the runtime
-	if (isAsmjs) {
-		buffer = buffer || new ArrayBuffer(201326592);
-	}
-	const mod = runtime(global.Module = {
-		noInitialRun: true,
-		noExitRuntime: true,
-		print: line => print(0, line),
-		printErr: line => print(2, line),
-		onAbort: function(what) {
-			throw new Error(what);
-		},
-		read: function(lib) {
-			return dylibs[lib];
-		},
-		readBinary: function(lib) {
-			return dylibs[lib];
-		},
-		screeps,
-		buffer,
-		wasmBinary: wasm,
-	});
-	mod.__ZN7screeps3cpu18adjust_memory_sizeEi(STATICTOP);
-	yield 'runtime';
-
-	// Setup exception handler
-	new function() {
-		let demangleHole = mod._malloc(256 + 4 + 1);
-		function readCString(ptr) {
-			let str = '';
-			while (true) {
-				let ch = mod.HEAP8[ptr++];
-				if (!ch) {
-					return str;
-				}
-				str += String.fromCharCode(ch);
-			}
+	let mod;
+	if (runtime instanceof Function) { // Is an emscripten module, otherwise it's native
+		// Missing function =o
+		global.invoke_X = function(...args) {
+			return Module['wasmTable'].get(args[0]).apply(null, args.slice(1));
 		}
 
-		function makeCString(string, ptr) {
-			for (let ii = 0; ii < string.length; ++ii) {
-				mod.HEAP8[ptr + ii] = string.charCodeAt(ii);
-			}
-			mod.HEAP8[ptr + string.length] = 0;
-			return ptr;
+		// Start the runtime
+		if (isAsmjs) {
+			buffer = buffer || new ArrayBuffer(201326592);
 		}
+		mod = runtime(global.Module = {
+			noInitialRun: true,
+			noExitRuntime: true,
+			print: line => print(0, line),
+			printErr: line => print(2, line),
+			onAbort: function(what) {
+				throw new Error(what);
+			},
+			read: function(lib) {
+				return dylibs[lib];
+			},
+			readBinary: function(lib) {
+				return dylibs[lib];
+			},
+			screeps,
+			buffer,
+			wasmBinary: wasm,
 
-		function demangle(name) {
-			if (!mod.___cxa_demangle) {
-				return name;
+			readInt8: addr => mod.HEAP8[addr],
+			writeInt8: (addr, val) => void(mod.HEAP8[addr] = val),
+			readUint8: addr => mod.HEAPU8[addr],
+			writeUint8: (addr, val) => void(mod.HEAPU8[addr] = val),
+
+			readInt16: addr => mod.HEAP16[addr >> 1],
+			writeInt16: (addr, val) => void(mod.HEAP16[addr >> 1] = val),
+			readUint16: addr => mod.HEAPU16[addr >> 1],
+			writeUint16: (addr, val) => void(mod.HEAPU16[addr >> 1] = val),
+
+			readInt32: addr => mod.HEAP32[addr >> 2],
+			writeInt32: (addr, val) => void(mod.HEAP32[addr >> 2] = val),
+			readUint32: addr => mod.HEAPU32[addr >> 2],
+			writeUint32: (addr, val) => void(mod.HEAPU32[addr >> 2] = val),
+
+			readFloat32: addr => mod.HEAPF32[addr >> 2],
+			writeFloat32: (addr, val) => void(mod.HEAPF32[addr >> 2] = val),
+
+			ptrSize: 4,
+			readPtr: addr => mod.HEAPU32[addr >> 2],
+			writePtr: (addr, val) => void(mod.HEAPU32[addr >> 2] = val),
+		});
+		mod.__ZN7screeps3cpu18adjust_memory_sizeEi(STATICTOP);
+		require('error').setupExceptionHandler(mod, sourceMaps);
+		yield 'runtime';
+
+		// Link dylibs
+		{
+			let currentLib;
+			let evil = eval;
+			global.eval = function(src) {
+				// Ensures library name makes it to stack traces for source maps to work
+				return evalWithName(evil, currentLib, src);
+			};
+			for (let lib in dylibs) {
+				currentLib = lib;
+				// Dynamic libraries have a dynamic stack which counts against total memory. But it only
+				// affects dynamic builds so we adjust downwards that way heap stats are predictable during
+				// development.
+				mod.__ZN7screeps3cpu18adjust_memory_sizeEi(-TOTAL_STACK);
+				mod.loadDynamicLibrary(lib);
+				yield lib;
 			}
-			let cName, status, ret;
-			try {
-				if (name.length > 256) {
-					return name;
-				}
-				cName = makeCString(name.substr(1), demangleHole + 4);
-				status = demangleHole;
-				mod._malloc(4);
-				ret = mod.___cxa_demangle(cName, 0, 0, status);
-				if (mod.HEAP32[status >> 2] === 0 && ret) {
-					return readCString(ret).replace(/std::__2::/g, 'std::');
-				} else {
-					return name;
-				}
-			} catch (err) {
-				return name;
-			} finally {
-				try {
-					ret && mod._free(ret);
-				} catch (err) {}
-			}
+			global.eval = evil;
 		}
+	} else {
+		global.Module = mod = runtime;
+		makeHeapProxies(mod);
+		Object.assign(mod, {
+			screeps,
 
-		Error.stackTraceLimit = 25;
-		Error.prepareStackTrace = function(error, stack) {
-			// Parse message
-			let message;
-			if (error.ptr) {
-				let err_info = mod.__ZN7screeps14exception_whatEPv(error.ptr);
-				let [ name, what ] = [ mod.HEAPU32[err_info >> 2], mod.HEAPU32[(err_info + 4) >> 2] ].map(function(ptr) {
-					let str = '';
-					while (true) {
-						let ch = mod.HEAPU8[ptr++];
-						if (!ch) {
-							return str;
-						}
-						str += String.fromCharCode(ch);
-					}
-				});
-				mod._free(error.ptr);
-				name = name.replace(/^St[0-9]+/, 'std::');
-				message = `${name}: ${what}`;
-			} else {
-				message = error.message;
-			}
+			readInt8: addr => mod.HEAP8[addr],
+			writeInt8: (addr, val) => void(mod.HEAP8[addr] = val),
+			readUint8: addr => mod.HEAPU8[addr],
+			writeUint8: (addr, val) => void(mod.HEAPU8[addr] = val),
 
-			// Render frames
-			let renderer;
-			let lastFn;
-			if (sourceMaps) {
-				renderer = function(frame) {
-					let fnName = frame.getFunctionName();
-					let lastFnCopy = lastFn;
-					lastFn = fnName;
-					let demangled = demangle(fnName);
-					let source;
-					let line = frame.getLineNumber(); // Messy function bloat
-					let column = frame.getColumnNumber();
-					if (fnName !== demangled) {
-						let libMatch = /eval at ([^ ]+)/.exec(frame.getEvalOrigin());
-						if (libMatch !== null) {
-							let sourceMap = sourceMaps[libMatch[1]];
-							if (sourceMap !== undefined) {
-								let position = sourceMap.originalPositionFor({ line, column });
-								if (position.source !== null) {
-									return `${demangled} (${position.source}:${position.line})`;
-								} else if (fnName === lastFnCopy) {
-									// Cross-library invocation will dupe the function
-									return null;
-								}
-							}
-						}
-						let origin = frame.getEvalOrigin() || `${frame.getScriptNameOrSourceURL()}:${line}:${column}`;
-						return `${demangled} (${origin})`;
-					}
-					return frame;
-				};
-			} else {
-				renderer = function(frame) {
-					let fnName = frame.getFunctionName();
-					let demangled = demangle(fnName);
-					if (fnName !== demangled) {
-						let origin = frame.getEvalOrigin() || `${frame.getScriptNameOrSourceURL()}:${frame.getLineNumber()}:${frame.getColumnNumber()}`;
-						return `${demangled} (${origin})`;
-					}
-					return frame;
-				}
-			}
-			for (let ii = 0; ii < stack.length; ++ii) {
-				if (stack[ii].getEvalOrigin() === '__mainLoop') {
-					stack = stack.slice(0, ii);
-					break;
-				}
-			}
-			let noise = /^(?:dynCall|ftCall|invoke|_emscripten_asm_const)_[dfiv]+$|^asm\.|^_.+__wrapper$|^___cxa_throw/;
-			return `${message}\n${stack.filter(frame => !noise.test(frame.getFunctionName())).map(renderer).filter(frame => frame).map(function(frame) {
-				return `    at ${frame}\n`;
-			}).join('')}`;
-		}
-	};
+			readInt16: addr => mod.HEAP16[addr / 2],
+			writeInt16: (addr, val) => void(mod.HEAP16[addr / 2] = val),
+			readUint16: addr => mod.HEAPU16[addr / 2],
+			writeUint16: (addr, val) => void(mod.HEAPU16[addr / 2] = val),
 
-	// Link dylibs
-	{
-		let currentLib;
-		let evil = eval;
-		global.eval = function(src) {
-			// Ensures library name makes it to stack traces for source maps to work
-			return evalWithName(evil, currentLib, src);
-		};
-		for (let lib in dylibs) {
-			currentLib = lib;
-			// Dynamic libraries have a dynamic stack which counts against total memory. But it only
-			// affects dynamic builds so we adjust downwards that way heap stats are predictable during
-			// development.
-			mod.__ZN7screeps3cpu18adjust_memory_sizeEi(-TOTAL_STACK);
-			mod.loadDynamicLibrary(lib);
-			yield lib;
-		}
-		global.eval = evil;
+			readInt32: addr => mod.HEAP32[addr / 4],
+			writeInt32: (addr, val) => void(mod.HEAP32[addr / 4] = val),
+			readUint32: addr => mod.HEAPU32[addr / 4],
+			writeUint32: (addr, val) => void(mod.HEAPU32[addr / 4] = val),
+
+			readFloat32: addr => mod.HEAPF32[addr / 4],
+			writeFloat32: (addr, val) => void(mod.HEAPF32[addr / 4] = val),
+
+			ptrSize: 8,
+			readPtr(addr) {
+				addr /= 4;
+				return mod.HEAPU32[addr + 1] * 0x100000000 + mod.HEAPU32[addr];
+			},
+			writePtr(addr, val) {
+				addr /= 4;
+				mod.HEAPU32[addr + 1] = Math.floor(val / 0x100000000);
+				mod.HEAPU32[addr] = val % 0x100000000;
+			},
+		});
+		mod.screeps = screeps;
 	}
 
 	// Initialize internal structures
@@ -387,7 +299,7 @@ function* initialize() {
 		inflate.destroy();
 		inflate = undefined;
 	}
-	asmjsArchive = dylibs = runtime = wasm = info = SourceMapConsumer = undefined;
+	asmjsArchive = dylibs = runtime = wasm = info = SourceMapConsumer = sourceMaps = undefined;
 	gc();
 	yield 'gc';
 	yield `!Heap: ${Game.cpu.getHeapStatistics().used_heap_size / 1024 / 1024}mb`;

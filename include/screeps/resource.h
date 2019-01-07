@@ -46,9 +46,9 @@ struct resource_store_t {
 	private:
 		using extended_resource_store_t = std::array<value_type, (int)resource_t::size>;
 		static inline array_t<extended_resource_store_t, kExtraStoreReservation> extended_stores;
-		extended_resource_store_t* extended;
 		resource_t single_type;
 		value_type single_amount;
+		extended_resource_store_t* extended;
 
 		void promote() {
 			extended = &extended_stores.emplace_back();

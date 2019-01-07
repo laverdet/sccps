@@ -1,6 +1,6 @@
+#include "./javascript.h"
 #include <screeps/creep.h>
 #include <cstring>
-#include <emscripten.h>
 
 namespace screeps {
 

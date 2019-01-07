@@ -178,6 +178,7 @@ const that = module.exports = {
 		creepMy = layout.my;
 		creepName = layout.name;
 		creepSpawning = layout.spawning;
+		creepTicksToLive = layout.ticksToLive;
 		creepBodyPartSizeof = layout.bodyPartSizeof;
 		creepBodyPartBoost = layout.bodyPartBoost;
 		creepBodyPartType = layout.bodyPartType;
@@ -243,22 +244,23 @@ const that = module.exports = {
 	},
 
 	writeGame(env, ptr) {
+
 		// Write game data
-		env.HEAP32[(ptr + gameGcl) >> 2] = Game.gcl;
-		env.HEAP32[(ptr + gameTime) >> 2] = Game.time;
+		// env.writeInt32(ptr + gameGcl, Game.gcl);
+		env.writeInt32(ptr + gameTime, Game.time);
 
 		// Ensure vector capacity
 		let constructionSites = Object.values(Game.constructionSites);
 		let flags = Object.values(Game.flags);
 		let rooms = Object.keys(Game.rooms);
-		let roomPointersLength = Math.max(env.HEAPU32[((ptr + gameRooms) >> 2) + 1], rooms.length);
+		let roomPointersLength = Math.max(env.readUint32(ptr + gameRooms), rooms.length);
 		let needsResize =
-			env.HEAPU32[((ptr + gameConstructionSites) >> 2) + 1] < constructionSites.length ||
-			env.HEAPU32[((ptr + gameFlags) >> 2) + 1] < flags.length ||
-			env.HEAPU32[((ptr + gameRooms) >> 2) + 1] < rooms.length;
-		env.HEAPU32[((ptr + gameConstructionSites) >> 2) + 1] = constructionSites.length;
-		env.HEAPU32[((ptr + gameFlags) >> 2) + 1] = flags.length;
-		env.HEAPU32[((ptr + gameRooms) >> 2) + 1] = rooms.length;
+			env.readUint32(ptr + gameConstructionSites) < constructionSites.length ||
+			env.readUint32(ptr + gameFlags) < flags.length ||
+			env.readUint32(ptr + gameRooms) < rooms.length;
+		env.writeUint32(ptr + gameConstructionSites, constructionSites.length);
+		env.writeUint32(ptr + gameFlags, flags.length);
+		env.writeUint32(ptr + gameRooms, rooms.length);
 		if (needsResize) {
 			env.__ZN7screeps12game_state_t15ensure_capacityEPS0_(ptr);
 		}
@@ -267,15 +269,15 @@ const that = module.exports = {
 		constructionSites.sort(function(left, right) {
 			return PositionLib.parseRoomName(left.pos.roomName) - PositionLib.parseRoomName(right.pos.roomName);
 		});
-		ArrayLib.writeData(env, env.HEAPU32[(ptr + gameConstructionSites) >> 2], constructionSiteSizeof, constructionSites, that.writeConstructionSite);
+		ArrayLib.writeData(env, env.readPtr(ptr + gameConstructionSites + env.ptrSize), constructionSiteSizeof, constructionSites, that.writeConstructionSite);
 
 		// Write rooms
-		let roomPointers = env.HEAPU32[(ptr + gameRooms) >> 2] >> 2;
-		let roomPointersEnd = roomPointers + roomPointersLength;
+		let roomPointers = env.readPtr(ptr + gameRooms + env.ptrSize);
+		let roomPointersEnd = roomPointers + roomPointersLength * env.ptrSize;
 		let extraRoomPointers = roomPointers;
 		let unusedRoomPointers = [];
-		while (roomPointers !== roomPointersEnd && env.HEAPU32[(env.HEAPU32[roomPointers] + roomLocation) >> 2] === 0) {
-			++roomPointers;
+		while (roomPointers !== roomPointersEnd && env.readUint32(env.readPtr(roomPointers) + roomLocation) === 0) {
+			roomPointers += env.ptrSize;
 		}
 		rooms.sort(function(left, right) {
 			return PositionLib.parseRoomName(left) - PositionLib.parseRoomName(right);
@@ -287,20 +289,22 @@ const that = module.exports = {
 			do {
 				if (roomPointers === roomPointersEnd) {
 					if (unusedRoomPointers.length === 0) {
-						roomPtr = env.HEAPU32[extraRoomPointers++];
+						roomPtr = env.readPtr(extraRoomPointers);
+						extraRoomPointers += env.ptrSize;
 					} else {
 						roomPtr = unusedRoomPointers.pop();
 					}
 					break;
 				} else {
-					roomPtr = env.HEAPU32[roomPointers];
-					let nextRoomId = env.HEAP32[(roomPtr + roomLocation) >> 2];
+					roomPtr = env.readPtr(roomPointers);
+					let nextRoomId = env.readInt32(roomPtr + roomLocation);
 					if (nextRoomId < roomId) {
-						++roomPointers;
+						roomPointers += env.ptrSize;
 						unusedRoomPointers.push(roomPtr);
 						continue;
 					} else if (nextRoomId > roomId) {
-						roomPtr = env.HEAPU32[extraRoomPointers++];
+						roomPtr = env.readPtr(extraRoomPointers);
+						extraRoomPointers += env.ptrSize;
 					}
 					break;
 				}
@@ -311,9 +315,9 @@ const that = module.exports = {
 
 	writeRoom(env, ptr, roomId, room) {
 		// Write room data
-		env.HEAP32[(ptr + roomLocation) >> 2] = roomId;
-		env.HEAP32[(ptr + roomEnergyAvailable) >> 2] = room.energyAvailable;
-		env.HEAP32[(ptr + roomEnergyCapacityAvailable) >> 2] = room.energyCapacityAvailable;
+		env.writeInt32(ptr + roomLocation, roomId);
+		env.writeInt32(ptr + roomEnergyAvailable, room.energyAvailable);
+		env.writeInt32(ptr + roomEnergyCapacityAvailable, room.energyCapacityAvailable);
 
 		// Ensure vector capacity
 		let creeps = room.find(FIND_CREEPS);
@@ -321,23 +325,23 @@ const that = module.exports = {
 		let sources = room.find(FIND_SOURCES);
 		let structures = room.find(FIND_STRUCTURES);
 		let needsResize =
-			env.HEAPU32[((ptr + roomCreeps) >> 2) + 1] < creeps.length ||
-			env.HEAPU32[((ptr + roomDroppedResources) >> 2) + 1] < droppedResources.length ||
-			env.HEAPU32[((ptr + roomSources) >> 2) + 1] < sources.length ||
-			env.HEAPU32[((ptr + roomStructures) >> 2) + 1] < structures.length;
-		env.HEAPU32[((ptr + roomCreeps) >> 2) + 1] = creeps.length;
-		env.HEAPU32[((ptr + roomDroppedResources) >> 2) + 1] = droppedResources.length;
-		env.HEAPU32[((ptr + roomSources) >> 2) + 1] = sources.length;
-		env.HEAPU32[((ptr + roomStructures) >> 2) + 1] = structures.length;
+			env.readUint32(ptr + roomCreeps) < creeps.length ||
+			env.readUint32(ptr + roomDroppedResources) < droppedResources.length ||
+			env.readUint32(ptr + roomSources) < sources.length ||
+			env.readUint32(ptr + roomStructures) < structures.length;
+		env.writeUint32(ptr + roomCreeps, creeps.length);
+		env.writeUint32(ptr + roomDroppedResources, droppedResources.length);
+		env.writeUint32(ptr + roomSources, sources.length);
+		env.writeUint32(ptr + roomStructures, structures.length);
 		if (needsResize) {
 			env.__ZN7screeps6room_t15ensure_capacityEPS0_(ptr);
 		}
 
 		// Write structures
-		ArrayLib.writeData(env, env.HEAPU32[(ptr + roomCreeps) >> 2], creepSizeof, creeps, that.writeCreep);
-		ArrayLib.writeData(env, env.HEAPU32[(ptr + roomDroppedResources) >> 2], droppedResourceSizeof, droppedResources, that.writeDroppedResource);
-		ArrayLib.writeData(env, env.HEAPU32[(ptr + roomSources) >> 2], sourceSizeof, sources, that.writeSource);
-		ArrayLib.writeData(env, env.HEAPU32[(ptr + roomStructures) >> 2], structureSizeof, structures, that.writeStructure);
+		ArrayLib.writeData(env, env.readPtr(ptr + roomCreeps + env.ptrSize), creepSizeof, creeps, that.writeCreep);
+		ArrayLib.writeData(env, env.readPtr(ptr + roomDroppedResources + env.ptrSize), droppedResourceSizeof, droppedResources, that.writeDroppedResource);
+		ArrayLib.writeData(env, env.readPtr(ptr + roomSources + env.ptrSize), sourceSizeof, sources, that.writeSource);
+		ArrayLib.writeData(env, env.readPtr(ptr + roomStructures + env.ptrSize), structureSizeof, structures, that.writeStructure);
 
 		// Write mineral
 		let minerals = room.find(FIND_MINERALS);
@@ -349,13 +353,13 @@ const that = module.exports = {
 			mineralPtr = ptr + roomMineralHolder;
 			that.writeMineral(env, mineralPtr, minerals[0]);
 		}
-		env.HEAPU32[(ptr + roomMineral) >> 2] = mineralPtr;
+		env.writePtr(ptr + roomMineral, mineralPtr);
 	},
 
 	writeRoomObject(env, ptr, pos) {
 		let room = PositionLib.parseRoomName(pos.roomName);
-		env.HEAPU16[(ptr + 0) >> 1] = pos.x + (room >> 16) * 50;
-		env.HEAPU16[(ptr + 2) >> 1] = pos.y + (room & 0xff) * 50;
+		env.writeUint16(ptr + 0, pos.x + (room >> 16) * 50);
+		env.writeUint16(ptr + 2, pos.y + (room & 0xff) * 50);
 	},
 
 	writeGameObject(env, ptr, obj) {
@@ -363,90 +367,93 @@ const that = module.exports = {
 		if (obj.id.length > 24) {
 			throw new Error('`id` overflow');
 		}
-		StringLib.writeOneByteString(env, ptr + 4, obj.id);
+		StringLib.writeOneByteString(env, ptr + env.ptrSize, obj.id);
 	},
 
 	writeConstructionSite(env, ptr, constructionSite) {
 		that.writeGameObject(env, ptr, constructionSite);
-		env.HEAP8[(ptr + constructionSiteMy) >> 0] = constructionSite.my ? 1 : 0;
-		env.HEAP32[(ptr + constructionSiteProgress) >> 2] = constructionSite.progress;
-		env.HEAP32[(ptr + constructionSiteProgressTotal) >> 2] = constructionSite.progressTotal;
-		env.HEAP32[(ptr + constructionSiteType) >> 2] = structureTypeEnum.get(constructionSite.structureType);
+		env.writeInt8(ptr + constructionSiteMy, constructionSite.my ? 1 : 0);
+		env.writeInt32(ptr + constructionSiteProgress, constructionSite.progress);
+		env.writeInt32(ptr + constructionSiteProgressTotal, constructionSite.progressTotal);
+		env.writeInt32(ptr + constructionSiteType, structureTypeEnum.get(constructionSite.structureType));
 	},
 
 	writeCreep(env, ptr, creep) {
 		that.writeGameObject(env, ptr, creep);
 		that.writeResourceStore(env, ptr + creepCarry, creep.carry);
 		ArrayLib.write(env, ptr + creepBody, creepBodyPartSizeof, 50, creep.body, function(env, ptr, part) {
-			env.HEAP32[(ptr + creepBodyPartBoost) >> 2] = resourceEnum.get(part.boost);
-			env.HEAP32[(ptr + creepBodyPartType) >> 2] = bodyPartEnum.get(part.type);
+			env.writeInt32(ptr + creepBodyPartBoost, resourceEnum.get(part.boost));
+			env.writeInt32(ptr + creepBodyPartType, bodyPartEnum.get(part.type));
 		});
-		env.HEAP32[(ptr + creepCarryCapacity) >> 2] = creep.carryCapacity;
-		env.HEAP32[(ptr + creepFatigue) >> 2] = creep.fatigue;
-		env.HEAP32[(ptr + creepHits) >> 2] = creep.hits;
-		env.HEAP32[(ptr + creepHitsMax) >> 2] = creep.hitsMax;
-		env.HEAP8[(ptr + creepMy) >> 0] = creep.my ? 1 : 0;
+		env.writeInt32(ptr + creepCarryCapacity, creep.carryCapacity);
+		env.writeInt32(ptr + creepFatigue, creep.fatigue);
+		env.writeInt32(ptr + creepHits, creep.hits);
+		env.writeInt32(ptr + creepHitsMax, creep.hitsMax);
+		env.writeInt8(ptr + creepMy, creep.my ? 1 : 0);
 		if (creep.my) {
 			StringLib.writeOneByteString(env, ptr + creepName, creep.name);
 		} else {
-			env.HEAP32[(ptr + creepName) >> 2] = 0;
+			env.writeInt32(ptr + creepName, 0);
 		}
-		env.HEAP8[(ptr + creepSpawning) >> 0] = creep.spawning ? 1 : 0;
-		env.HEAP32[(ptr + creepTicksToLive) >> 2] = creep.ticksToLive;
+		env.writeInt8(ptr + creepSpawning, creep.spawning ? 1 : 0);
+		env.writeInt32(ptr + creepTicksToLive, creep.ticksToLive);
 	},
 
 	writeDroppedResource(env, ptr, droppedResource) {
 		that.writeGameObject(env, ptr, droppedResource);
-		env.HEAP32[(ptr + droppedResourceAmount) >> 2] = droppedResource.amount;
-		env.HEAP32[(ptr + droppedResourceType) >> 2] = resourceEnum.get(droppedResource.resourceType);
+		env.writeInt32(ptr + droppedResourceAmount, droppedResource.amount);
+		env.writeInt32(ptr + droppedResourceType, resourceEnum.get(droppedResource.resourceType));
 	},
 
 	writeMineral(env, ptr, mineral) {
 		that.writeGameObject(env, ptr, mineral);
-		env.HEAP32[(ptr + mineralType) >> 2] = resourceEnum.get(mineral.mineralType);
-		env.HEAP32[(ptr + mineralAmount) >> 2] = mineral.mineralAmount;
-		env.HEAP32[(ptr + mineralDensity) >> 2] = mineral.density;
-		env.HEAP32[(ptr + mineralTicksToRegeneration) >> 2] = mineral.ticksToRegeneration;
+		env.writeInt32(ptr + mineralType, resourceEnum.get(mineral.mineralType));
+		env.writeInt32(ptr + mineralAmount, mineral.mineralAmount);
+		env.writeInt32(ptr + mineralDensity, mineral.density);
+		env.writeInt32(ptr + mineralTicksToRegeneration, mineral.ticksToRegeneration);
 	},
 
 	writeResourceStore(env, ptr, store) {
 		let keys = Object.keys(store);
 		if (keys.length == 0) {
-			env.HEAP32[ptr >> 2] = 0; // extended
-			env.HEAP32[(ptr + 8) >> 2] = 0; // single_amount
+			env.writeInt32(ptr + 4, 0); // single_amount
+			env.writePtr(ptr + 8, 0); // extended
 		} else if (keys.length == 1) {
-			env.HEAP32[ptr >> 2] = 0; // extended
 			let type = keys[0];
-			env.HEAP32[(ptr + 4) >> 2] = resourceEnum.get(type) | 0; // single_type
-			env.HEAP32[(ptr + 8) >> 2] = store[type] | 0; // single_amount
+			env.writeInt32(ptr, resourceEnum.get(type)); // single_type
+			env.writeInt32(ptr + 4, store[type]); // single_amount
+			env.writePtr(ptr + 8, 0); // extended
 		} else {
+			throw new Error('More than one resource');
+			/*
 			let extended = ArrayLib.push(env, extendedResourceStorePtr, extendedResourceStoreSizeof, 100);
-			env.HEAP32.fill(extended >> 2, (extended + extendedResourceStoreSizeof) >> 2, 0);
-			env.HEAP32[ptr >> 2] = extended | 0;
+			env.Int32.fill(extended >> 2, (extended + extendedResourceStoreSizeof) >> 2, 0);
+			env.Int32[ptr >> 2] = extended | 0;
 			for (let ii = keys.length - 1; ii >= 0; --ii) {
 				let key = keys[ii];
-				env.HEAP32[(extended + resourceEnum.get(key) * 4) >> 2] = store[key] | 0;
+				env.Int32[(extended + resourceEnum.get(key) * 4, store[key] | 0;
 			}
+			*/
 		}
 	},
 
 	writeSource(env, ptr, source) {
 		that.writeGameObject(env, ptr, source);
-		env.HEAP32[(ptr + sourceEnergy) >> 2] = source.energy;
-		env.HEAP32[(ptr + sourceEnergyCapacity) >> 2] = source.energyCapacity;
-		env.HEAP32[(ptr + sourceTicksToRegeneration) >> 2] = source.ticksToRegeneration;
+		env.writeInt32(ptr + sourceEnergy, source.energy);
+		env.writeInt32(ptr + sourceEnergyCapacity, source.energyCapacity);
+		env.writeInt32(ptr + sourceTicksToRegeneration, source.ticksToRegeneration);
 	},
 
 	writeStructure(env, ptr, structure) {
 		that.writeGameObject(env, ptr, structure);
-		env.HEAP32[(ptr + structureStructureType) >> 2] = structureTypeEnum.get(structure.structureType);
+		env.writeInt32(ptr + structureStructureType, structureTypeEnum.get(structure.structureType));
 		switch (structure.structureType) {
 			case STRUCTURE_CONTROLLER:
-				env.HEAP32[(ptr + structureControllerLevel) >> 2] = structure.level;
-				env.HEAP32[(ptr + structureControllerProgress) >> 2] = structure.progress;
-				env.HEAP32[(ptr + structureControllerProgressTotal) >> 2] = structure.progressTotal;
-				env.HEAP32[(ptr + structureControllerTicksToDowngrade) >> 2] = structure.ticksToDowngrade;
-				env.HEAP32[(ptr + structureControllerUpgradeBlocked) >> 2] = structure.upgradeBlocked;
+				env.writeInt32(ptr + structureControllerLevel, structure.level);
+				env.writeInt32(ptr + structureControllerProgress, structure.progress);
+				env.writeInt32(ptr + structureControllerProgressTotal, structure.progressTotal);
+				env.writeInt32(ptr + structureControllerTicksToDowngrade, structure.ticksToDowngrade);
+				env.writeInt32(ptr + structureControllerUpgradeBlocked, structure.upgradeBlocked);
 				break;
 
 			case STRUCTURE_KEEPER_LAIR:
@@ -456,21 +463,21 @@ const that = module.exports = {
 				break;
 			default:
 				// Structure with hit points
-				env.HEAP32[(ptr + structureDestroyableHits) >> 2] = structure.hits;
-				env.HEAP32[(ptr + structureDestroyableHitsMax) >> 2] = structure.hitsMax;
+				env.writeInt32(ptr + structureDestroyableHits, structure.hits);
+				env.writeInt32(ptr + structureDestroyableHitsMax, structure.hitsMax);
 				if (structure.structureType === STRUCTURE_ROAD) {
 				} else if (structure.structureType === STRUCTURE_WALL) {
 				} else {
 					// Owned structure
-					env.HEAP8[(ptr + structureOwnedMy.my) >> 0] = structure.my;
+					env.writeInt8(ptr + structureOwnedMy, structure.my);
 					switch (structure.structureType) {
 						case STRUCTURE_EXTENSION:
-							env.HEAP32[(ptr + structureExtensionEnergy) >> 2] = structure.energy;
-							env.HEAP32[(ptr + structureExtensionEnergyCapacity) >> 2] = structure.energyCapacity;
+							env.writeInt32(ptr + structureExtensionEnergy, structure.energy);
+							env.writeInt32(ptr + structureExtensionEnergyCapacity, structure.energyCapacity);
 							break;
 						case STRUCTURE_SPAWN:
-							env.HEAP32[(ptr + structureSpawnEnergy) >> 2] = structure.energy;
-							env.HEAP32[(ptr + structureSpawnEnergyCapacity) >> 2] = structure.energyCapacity;
+							env.writeInt32(ptr + structureSpawnEnergy, structure.energy);
+							env.writeInt32(ptr + structureSpawnEnergyCapacity, structure.energyCapacity);
 							break;
 					}
 				}

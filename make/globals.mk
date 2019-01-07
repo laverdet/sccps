@@ -4,6 +4,7 @@ TARGET ?= debug
 BUILD_PATH := build/$(TARGET)
 ASMJS := $(BUILD_PATH)/asmjs
 WASM := $(BUILD_PATH)/wasm
+NATIVE := $(BUILD_PATH)/native
 
 # Utilities
 EMCXX ?= em++
@@ -15,6 +16,7 @@ MERGE_SYMBOLS := $(SCREEPS_PATH)/merge-symbols.js
 TO_JSON := $(SCREEPS_PATH)/to-json.js
 STRIP_MAP := $(SCREEPS_PATH)/strip-map.js
 UGLIFY := $(SCREEPS_PATH)/node_modules/.bin/uglifyjs -b beautify=false,preserve_line=true
+MAKEFILE_DEPS = $(filter-out %.d,$(MAKEFILE_LIST))
 NOTHING :=
 SPACE := $(NOTHING) $(NOTHING)
 COMMA := ,

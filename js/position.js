@@ -6,8 +6,8 @@ let roomNameCache = new Map;
 
 const that = module.exports = {
 	read(env, ptr) {
-		let xx = env.HEAPU16[ptr >> 1];
-		let yy = env.HEAPU16[(ptr + 2) >> 1];
+		let xx = env.readUint16(ptr);
+		let yy = env.readUint16(ptr + 2);
 		return new RoomPosition(xx % 50, yy % 50, that.generateRoomName(xx / 50 | 0, yy / 50 | 0));
 	},
 

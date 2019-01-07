@@ -144,7 +144,9 @@ class room_t {
 		}
 
 		static void init();
+	public:
 		static void ensure_capacity(room_t* room);
+	private:
 		void reset();
 		void shrink();
 		void update_pointers();

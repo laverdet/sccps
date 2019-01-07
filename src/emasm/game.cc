@@ -1,7 +1,7 @@
 #include <screeps/game.h>
 #include <algorithm>
 #include <deque>
-#include <emscripten.h>
+#include "./javascript.h"
 
 namespace screeps {
 
@@ -154,3 +154,52 @@ void* exception_what(void* ptr) {
 
 // Keep loop function alive
 EMSCRIPTEN_KEEPALIVE void loop();
+
+// Native module loader
+#ifndef __EMSCRIPTEN__
+#include <nan.h>
+#include <isolated_vm.h>
+using namespace v8;
+
+NAN_METHOD(mod_make_array_buffer) {
+	size_t addr = Nan::To<int64_t>(info[0]).ToChecked();
+	auto ab = ArrayBuffer::New(Isolate::GetCurrent(), reinterpret_cast<void*>(addr == 0 ? 0xdeadbeef : addr), 0x100000000);
+	info.GetReturnValue().Set(ab);
+	if (addr == 0) {
+		// v8 won't let you create a buffer starting at address 0 so I cheat.
+		auto hack = **(char***)&ab;
+		for (int ii = 0; ii < 100; ++ii) {
+			auto& value = *(unsigned int*)(hack + ii);
+			if (value == 0xdeadbeef) {
+				value = 0;
+				return;
+			}
+		}
+		throw std::runtime_error("Failed to be sneaky");
+	}
+}
+
+NAN_METHOD(mod_game_state_init_layout) {
+	screeps::game_state_t::init_layout();
+}
+
+NAN_METHOD(mod_game_state_ensure_capacity) {
+	screeps::game_state_t::ensure_capacity(reinterpret_cast<screeps::game_state_t*>(Nan::To<int64_t>(info[0]).ToChecked()));
+}
+
+NAN_METHOD(mod_room_ensure_capacity) {
+	screeps::room_t::ensure_capacity(reinterpret_cast<screeps::room_t*>(Nan::To<int64_t>(info[0]).ToChecked()));
+}
+
+NAN_METHOD(mod_loop) {
+	loop();
+}
+
+ISOLATED_VM_MODULE void InitForContext(Isolate* isolate, Local<Context> context, Local<Object> target) {
+	Nan::SetMethod(target, "makeArrayBuffer", mod_make_array_buffer);
+	Nan::SetMethod(target, "__ZN7screeps12game_state_t11init_layoutEv", mod_game_state_init_layout);
+	Nan::SetMethod(target, "__ZN7screeps12game_state_t15ensure_capacityEPS0_", mod_game_state_ensure_capacity);
+	Nan::SetMethod(target, "__ZN7screeps6room_t15ensure_capacityEPS0_", mod_room_ensure_capacity);
+	Nan::SetMethod(target, "__Z4loopv", mod_loop);
+}
+#endif

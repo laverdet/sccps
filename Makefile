@@ -18,15 +18,26 @@ CXXFLAGS += -Iinclude
 MAIN2_EMFLAGS := -s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$$($(TO_JSON) < emscripten_symbols) \
 	-s EXPORTED_FUNCTIONS=$$((cat dylib-symbols; egrep '[CD]1' dylib-symbols | perl -pe 's/([CD])1/$$1\x32/'; sed 's/^/_/' emscripten_symbols) | $(TO_JSON)) \
 	-s EXTRA_EXPORTED_RUNTIME_METHODS="['loadDynamicLibrary']"
-$(BUILD_PATH)/asmjs.js: $(EMASM_OBJS) dylib-symbols | compile_flags.txt nothing
+$(BUILD_PATH)/asmjs.js: $(EMASM_OBJS) dylib-symbols | nothing
 	$(EMCXX) -o $@ $(EMASM_OBJS) $(EMFLAGS) $(MAIN_EMFLAGS) $(ASMJS_EMFLAGS) $(MAIN2_EMFLAGS)
 
 # llvm bytecode targets
-$(BUILD_PATH)/emasm-bc-files.txt: $(EMASM_OBJS) | compile_flags.txt nothing
+$(BUILD_PATH)/emasm-bc-files.txt: $(EMASM_OBJS) | nothing
 	echo $^ > $@
 
+# module
+GYP_PATH := $(BUILD_PATH)/gyp
+$(GYP_PATH)/binding.gyp: binding.gyp 	$(MAKEFILE_DEPS) | $$(@D)/.
+	sed -e 's/SOURCES/'$$(echo marker.cc $(addprefix ../../../,$(EMASM_SRCS)) | $(TO_JSON) | sed 's/\//\\\//g')'/' binding.gyp > $@
+$(GYP_PATH)/marker.cc: $(BUILD_PATH)/module.a
+	touch $@
+$(GYP_PATH)/build/config.gypi: $(GYP_PATH)/binding.gyp
+	cd $(GYP_PATH); node-gyp configure --debug
+$(GYP_PATH)/build/Debug/module.node: $(GYP_PATH)/build/config.gypi $(GYP_PATH)/marker.cc nothing
+	cd $(GYP_PATH); node-gyp build -v
+
 # native archive
-$(BUILD_PATH)/screeps.a: $(NATIVE_OBJS) | compile_flags.txt nothing
+$(BUILD_PATH)/screeps.a: $(NATIVE_OBJS) | nothing
 	$(AR) rcs $@ $^
 
 # Linter. nb: we can't lint emasm sources because of EMASM macros

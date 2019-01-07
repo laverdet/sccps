@@ -4,6 +4,8 @@
   "private": true,
   "license": "ISC",
   "dependencies": {
+    "isolated-vm": "^1.7.6",
+    "nan": "^2.12.1",
     "uglify-js": "^3.4.9"
   }
 }

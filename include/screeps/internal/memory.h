@@ -33,8 +33,8 @@ template <class Type>
 struct memory_range_t {
 	using container_t = std::vector<Type, default_init_allocator<Type>>;
 
+	uint32_t size = 0;
 	Type* data = nullptr;
-	size_t size = 0;
 
 	// JS will write how big it wants the vector to be to `size` and this function picks that up and
 	// resizes the vector if needed. This may not be called on `load` if the room's vectors are all

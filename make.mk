@@ -8,7 +8,7 @@ include $(SCREEPS_PATH)/make/patterns.mk
 CXXFLAGS += -I$(SCREEPS_PATH)/include
 EXPORTED_FUNCTIONS += __Z4loopv
 WASM_EMFLAGS += -s EXPORTED_FUNCTIONS=$$(echo $(EXPORTED_FUNCTIONS) | $(TO_JSON))
-RUNTIME := array.js main.js object.js position.js string.js util.js vector.js inflate.js inflate.wasm.wasm
+RUNTIME := array.js console.js error.js main.js object.js position.js string.js util.js vector.js inflate.js inflate.wasm.wasm
 
 # Bytecode targets
 BC_FILES = $(addprefix $(BUILD_PATH)/,$(patsubst %.cc,%.bc,$(SRCS)))
@@ -36,6 +36,7 @@ asmjs: $(ASMJS)/$(MODULE_NAME).wasm $(ASMJS)/source-map.js
 else
 asmjs: $(ASMJS)/$(MODULE_NAME).js
 endif
+native: $(NATIVE)/$(MODULE_NAME).js $(addprefix $(NATIVE)/,$(RUNTIME))
 
 # Dynamic library symbol exports
 $(DYLIB_LINKER_SYMBOLS): $(DYLIB_LINKER_SYMBOLS).marker
@@ -44,7 +45,7 @@ $(DYLIB_LINKER_SYMBOLS).marker: $$(DYLIB_SYMBOLS) | $$(@D)/.
 	$(MERGE_SYMBOLS) $(DYLIB_LINKER_SYMBOLS) -- $(DYLIB_SYMBOLS)
 
 # Copy screeps runtime JS files output
-$(ASMJS)/% $(WASM)/%: $(SCREEPS_PATH)/js/% | $$(@D)/.
+$(ASMJS)/% $(WASM)/% $(NATIVE)/%: $(SCREEPS_PATH)/js/% | $$(@D)/.
 	cp $< $@
 
 # static build
@@ -64,13 +65,22 @@ $(BUILD_PATH)/$(SCREEPS_PATH)/wasm.wasm: $(BUILD_PATH)/$(SCREEPS_PATH)/wasm.js
 $(WASM)/$(MODULE_NAME).wasm: $(BUILD_PATH)/$(SCREEPS_PATH)/wasm.js.deflate $(BUILD_PATH)/$(SCREEPS_PATH)/wasm.wasm.deflate | $$(@D)/.
 	$(MAKE_ARCHIVE) $@ --relative $(BUILD_PATH)/$(SCREEPS_PATH) $^
 
+# native module build
+NATIVE_MODULE_TARGET := $(SCREEPS_PATH)/$(BUILD_PATH)/gyp/build/Debug/module.node
+$(SCREEPS_PATH)/$(BUILD_PATH)/module.a: $$(NATIVE_OBJS) | $$(@D)/.
+	$(AR) rcs $@ $^
+$(NATIVE)/$(MODULE_NAME).js: $(NATIVE_MODULE_TARGET) | $$(@D)/.
+	echo 'module.exports = ivm_dlopen.applySync(undefined, ["'$$(pwd)/$^'"]).deref();' > $@
+
+$(NATIVE_MODULE_TARGET): $(SCREEPS_PATH)/$(BUILD_PATH)/module.a
+
 # native build
 $(MODULE_NAME): $(SCREEPS_PATH)/$(BUILD_PATH)/screeps.a $$(NATIVE_OBJS)
 	$(CXX) -o $@ $^ $(SCREEPS_CXXFLAGS) $(CXXFLAGS) $(NATIVE_CXXFLAGS)
 
 # Recursive screeps/% targets
 SCREEPS_TARGETS_RELATIVE := $(BUILD_PATH)/asmjs.js.deflate $(BUILD_PATH)/screeps.a compile_flags.txt clean very-clean
-SCREEPS_TARGETS := $(SCREEPS_BC_FILES) $(addprefix $(SCREEPS_PATH)/,$(SCREEPS_TARGETS_RELATIVE))
+SCREEPS_TARGETS := $(SCREEPS_BC_FILES) $(NATIVE_MODULE_TARGET) $(addprefix $(SCREEPS_PATH)/,$(SCREEPS_TARGETS_RELATIVE))
 $(SCREEPS_TARGETS): $(SCREEPS_PATH)/%: nothing
 	$(MAKE) -C $(SCREEPS_PATH) $*
 
