@@ -20,6 +20,9 @@ enum struct bodypart_t {
 	tough,
 	work,
 };
+inline constexpr int operator+(bodypart_t part) noexcept {
+	return static_cast<int>(part);
+}
 std::ostream& operator<<(std::ostream& os, bodypart_t type);
 
 struct creep_bodypart_t {
