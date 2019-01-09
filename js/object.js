@@ -321,6 +321,12 @@ const that = module.exports = {
 
 		// Ensure vector capacity
 		let creeps = room.find(FIND_CREEPS);
+		for (let spawn of room.find(FIND_MY_SPAWNS)) {
+			let spawning = spawn.spawning;
+			if (spawning) {
+				creeps.push(Game.creeps[spawning.name]);
+			}
+		}
 		let droppedResources = room.find(FIND_DROPPED_RESOURCES);
 		let sources = room.find(FIND_SOURCES);
 		let structures = room.find(FIND_STRUCTURES);
