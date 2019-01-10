@@ -142,11 +142,11 @@ const [ structureTypeEnum, structureTypeEnumReverse ] = util.enumToMap([
 	STRUCTURE_WALL,
 ]);
 let structureSizeof;
-let structureStructureType;
-let structureDestroyableHits, structureDestroyableHitsMax;
-let structureOwnedMy;
+let structureStructureType, structureHits, structureHitsMax, structureOwner, structureMy;
+let structureContainerStore, structureContainerStoreCapacity, structureContainerTicksToDecay;
 let structureControllerLevel, structureControllerProgress, structureControllerProgressTotal, structureControllerTicksToDowngrade, structureControllerUpgradeBlocked;
 let structureExtensionEnergy, structureExtensionEnergyCapacity;
+let structureRoadTicksToDecay;
 let structureSpawnEnergy, structureSpawnEnergyCapacity;
 let structureSpawning, structureSpawningDirections, structureSpawningNeedTime, structureSpawningRemainingTime, structureSpawningName;
 
@@ -226,27 +226,44 @@ const that = module.exports = {
 
 	initStructureLayout(layout) {
 		structureSizeof = layout.sizeof;
-		structureStructureType = layout.structure.structureType;
-		structureDestroyableHits = layout.destroyable.hits;
-		structureDestroyableHitsMax = layout.destroyable.hitsMax;
-		structureOwnedMy = layout.owned.my;
+		structureStructureType = layout.structureType;
+		structureHits = layout.hits;
+		structureHitsMax = layout.hitsMax;
+		structureOwner = layout.owner;
+		structureMy = layout.my;
+	},
 
-		structureControllerLevel = layout.controller.level;
-		structureControllerProgress = layout.controller.progress;
-		structureControllerProgressTotal = layout.controller.progressTotal;
-		structureControllerTicksToDowngrade = layout.controller.ticksToDowngrade;
-		structureControllerUpgradeBlocked = layout.controller.upgradeBlocked;
+	initStructureContainerLayout(layout) {
+		structureContainerStore = layout.store;
+		structureContainerStoreCapacity = layout.storeCapacity;
+		structureContainerTicksToDecay = layout.ticksToDecay;
+	},
 
-		structureExtensionEnergy = layout.extension.energy;
-		structureExtensionEnergyCapacity = layout.extension.energyCapacity;
+	initStructureControllerLayout(layout) {
+		structureControllerLevel = layout.level;
+		structureControllerProgress = layout.progress;
+		structureControllerProgressTotal = layout.progressTotal;
+		structureControllerTicksToDowngrade = layout.ticksToDowngrade;
+		structureControllerUpgradeBlocked = layout.upgradeBlocked;
+	},
 
-		structureSpawnEnergy = layout.spawn.energy;
-		structureSpawnEnergyCapacity = layout.spawn.energyCapacity;
-		structureSpawning = layout.spawn.spawning;
-		structureSpawningDirections = layout.spawn.spawningDirections;
-		structureSpawningNeedTime = layout.spawn.spawningNeedTime;
-		structureSpawningRemainingTime = layout.spawn.spawningRemainingTime;
-		structureSpawningName = layout.spawn.spawningName;
+	initStructureExtensionLayout(layout) {
+		structureExtensionEnergy = layout.energy;
+		structureExtensionEnergyCapacity = layout.energyCapacity;
+	},
+
+	initStructureRoadLayout(layout) {
+		structureRoadTicksToDecay = layout.ticksToDecay;
+	},
+
+	initStructureSpawnLayout(layout) {
+		structureSpawnEnergy = layout.energy;
+		structureSpawnEnergyCapacity = layout.energyCapacity;
+		structureSpawning = layout.spawning;
+		structureSpawningDirections = layout.spawningDirections;
+		structureSpawningNeedTime = layout.spawningNeedTime;
+		structureSpawningRemainingTime = layout.spawningRemainingTime;
+		structureSpawningName = layout.spawningName;
 	},
 
 	writeGame(env, ptr) {
@@ -459,7 +476,17 @@ const that = module.exports = {
 	writeStructure(env, ptr, structure) {
 		that.writeGameObject(env, ptr, structure);
 		env.writeInt32(ptr + structureStructureType, structureTypeEnum.get(structure.structureType));
+		env.writeInt32(ptr + structureHits, structure.hits);
+		env.writeInt32(ptr + structureHitsMax, structure.hitsMax);
+		// TODO: owners
+		env.writeInt8(ptr + structureMy, structure.my);
 		switch (structure.structureType) {
+			case STRUCTURE_CONTAINER:
+				that.writeResourceStore(env, ptr + structureContainerStore, structure.store);
+				env.writeInt32(ptr + structureContainerStoreCapacity, structure.storeCapacity);
+				env.writeInt32(ptr + structureContainerTicksToDecay, structure.ticksToDecay);
+				break;
+
 			case STRUCTURE_CONTROLLER:
 				env.writeInt32(ptr + structureControllerLevel, structure.level);
 				env.writeInt32(ptr + structureControllerProgress, structure.progress);
@@ -468,47 +495,34 @@ const that = module.exports = {
 				env.writeInt32(ptr + structureControllerUpgradeBlocked, structure.upgradeBlocked);
 				break;
 
-			case STRUCTURE_KEEPER_LAIR:
-			case STRUCTURE_PORTAL:
-			case STRUCTURE_POWER_BANK:
-				// indestrubable
+			case STRUCTURE_EXTENSION:
+				env.writeInt32(ptr + structureExtensionEnergy, structure.energy);
+				env.writeInt32(ptr + structureExtensionEnergyCapacity, structure.energyCapacity);
 				break;
-			default:
-				// Structure with hit points
-				env.writeInt32(ptr + structureDestroyableHits, structure.hits);
-				env.writeInt32(ptr + structureDestroyableHitsMax, structure.hitsMax);
-				if (structure.structureType === STRUCTURE_ROAD) {
-				} else if (structure.structureType === STRUCTURE_WALL) {
-				} else {
-					// Owned structure
-					env.writeInt8(ptr + structureOwnedMy, structure.my);
-					switch (structure.structureType) {
-						case STRUCTURE_EXTENSION:
-							env.writeInt32(ptr + structureExtensionEnergy, structure.energy);
-							env.writeInt32(ptr + structureExtensionEnergyCapacity, structure.energyCapacity);
-							break;
-						case STRUCTURE_SPAWN:
-							env.writeInt32(ptr + structureSpawnEnergy, structure.energy);
-							env.writeInt32(ptr + structureSpawnEnergyCapacity, structure.energyCapacity);
-							if (structure.spawning) {
-								let bits = 0;
-								if (structure.spawning.directions !== undefined) {
-									let directions = structure.spawning.directions;
-									for (let ii = directions.length - 1; ii <= 0; --ii) {
-										bits <<= 4;
-										bits |= directions[ii];
-									}
-								}
-								env.writeInt32(ptr + structureSpawningDirections, bits);
-								env.writeInt32(ptr + structureSpawningNeedTime, structure.spawning.needTime);
-								env.writeInt32(ptr + structureSpawningRemainingTime, structure.spawning.remainingTime);
-								StringLib.writeOneByteString(env, ptr + structureSpawningName, structure.spawning.name);
-								env.writeInt8(ptr + structureSpawning, 1);
-							} else {
-								env.writeInt8(ptr + structureSpawning, 0);
-							}
-							break;
+
+			case STRUCTURE_ROAD:
+				env.writeInt32(ptr + structureRoadTicksToDecay, structure.ticksToDecay);
+				break;
+
+			case STRUCTURE_SPAWN:
+				env.writeInt32(ptr + structureSpawnEnergy, structure.energy);
+				env.writeInt32(ptr + structureSpawnEnergyCapacity, structure.energyCapacity);
+				if (structure.spawning) {
+					let bits = 0;
+					if (structure.spawning.directions !== undefined) {
+						let directions = structure.spawning.directions;
+						for (let ii = directions.length - 1; ii <= 0; --ii) {
+							bits <<= 4;
+							bits |= directions[ii];
+						}
 					}
+					env.writeInt32(ptr + structureSpawningDirections, bits);
+					env.writeInt32(ptr + structureSpawningNeedTime, structure.spawning.needTime);
+					env.writeInt32(ptr + structureSpawningRemainingTime, structure.spawning.remainingTime);
+					StringLib.writeOneByteString(env, ptr + structureSpawningName, structure.spawning.name);
+					env.writeInt8(ptr + structureSpawning, 1);
+				} else {
+					env.writeInt8(ptr + structureSpawning, 0);
 				}
 				break;
 		}

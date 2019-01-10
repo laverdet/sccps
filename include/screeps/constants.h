@@ -104,4 +104,15 @@ constexpr int k_controller_structures[][9] = {
 	{0, 0, 2500, 2500, 2500, 2500, 2500, 2500, 2500},
 };
 
+constexpr int k_container_hits = 250000;
+constexpr int k_container_capacity = 2000;
+constexpr int k_container_decay = 5000;
+constexpr int k_container_decay_time = 100;
+constexpr int k_container_decay_time_owned = 500;
+
+constexpr int k_road_hits = 5000;
+constexpr int k_road_wearout = 1;
+constexpr int k_road_decay_amount = 100;
+constexpr int k_road_decay_time = 1000;
+
 } // namespace screeps

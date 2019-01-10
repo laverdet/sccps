@@ -40,22 +40,19 @@ struct structure_t : game_object_t {
 		size
 	};
 
-	type_t type; // must be first!
+	// nb: must match structure_union_t
+	type_t type;
+	int32_t hits;
+	int32_t hits_max;
+	int32_t owner;
+	bool my; // TODO: this is has to go
 
 	static void init();
 	friend std::ostream& operator<<(std::ostream& os, const structure_t& that);
 };
 
-struct destroyable_structure_t : structure_t {
-	int32_t hits;
-	int32_t hits_max;
-};
-
-struct owned_structure_t : destroyable_structure_t {
-	bool my;
-};
-
 struct controller_t : structure_t {
+	static constexpr auto k_type = structure_t::controller;
 	int32_t level;
 	int32_t progress;
 	int32_t progress_total;
@@ -63,9 +60,22 @@ struct controller_t : structure_t {
 	int32_t upgrade_blocked;
 };
 
-struct extension_t : owned_structure_t {
+struct container_t : structure_t {
+	static constexpr auto k_type = structure_t::container;
+	resource_store_t store;
+	int32_t store_capacity;
+	int32_t ticks_to_decay;
+};
+
+struct extension_t : structure_t {
+	static constexpr auto k_type = structure_t::extension;
 	int32_t energy;
 	int32_t energy_capacity;
+};
+
+struct road_t : structure_t {
+	static constexpr auto k_type = structure_t::road;
+	int32_t ticks_to_decay;
 };
 
 struct _spawn_structs_t {
@@ -138,7 +148,8 @@ struct _spawn_structs_t {
 	};
 };
 
-struct spawn_t : owned_structure_t {
+struct spawn_t : structure_t {
+	static constexpr auto k_type = structure_t::spawn;
 	using body_t = _spawn_structs_t::body_t;
 	using directions_t = _spawn_structs_t::directions_t;
 	using options_t = _spawn_structs_t::options_t;
@@ -178,56 +189,84 @@ struct spawn_t : owned_structure_t {
 	int spawn_creep(const body_t& body, const std::string& name, const options_t& options = {}) const;
 };
 
-// Used to reserve enough space in the array memory for any structure
+// Basically a std::variant<> but all types shared a common base class
 union structure_union_t {
-	struct {
-		position_t pos;
-		sid_t id;
-		structure_t::type_t type;
-	};
+	public:
+		struct {
+			// nb: must match structure_t
+			position_t pos;
+			sid_t id;
+			structure_t::type_t type;
+			int32_t hits;
+			int32_t hits_max;
+			int32_t owner;
+		};
 
-	destroyable_structure_t destroyable;
-	owned_structure_t owned;
+	private:
+		template <class... Types>
+		struct union_t {};
 
-	controller_t controller;
-	extension_t extension;
-	spawn_t spawn;
+		template <class Type, class... Types>
+		struct union_t<Type, Types...> {
+			union {
+				Type value;
+				union_t<Types...> rest;
+			};
 
-	structure_union_t() {}; // NOLINT(modernize-use-equals-default)
+			template <class Structure, class Function, class... Args>
+			decltype(auto) visit(Structure* structure, Function function, Args&&... args) const {
+				if (structure->type == Type::k_type) {
+					using cv_type = typename std::conditional<std::is_const_v<Structure>, const Type, Type>::type;
+					return function(*reinterpret_cast<cv_type*>(structure), std::forward<Args>(args)...);
+				} else if constexpr (sizeof...(Types) == 0) {
+					throw std::invalid_argument("Invalid structure type");
+				} else {
+					return rest.visit(structure, function, std::forward<Args>(args)...);
+				}
+			}
+		};
 
-	template <class Memory>
-	void serialize(Memory& memory) {
-		memory.copy(reinterpret_cast<uint8_t*>(this), sizeof(structure_union_t));
-	}
+		union_t<controller_t, container_t, extension_t, road_t, spawn_t> store;
 
-	bool is_owned() const {
-		switch (type) {
-			case structure_t::extension:
-			case structure_t::extractor:
-			case structure_t::lab:
-			case structure_t::link:
-			case structure_t::nuker:
-			case structure_t::observer:
-			case structure_t::power_spawn:
-			case structure_t::rampart:
-			case structure_t::spawn:
-			case structure_t::storage:
-			case structure_t::terminal:
-			case structure_t::tower:
-			case structure_t::wall:
-				return true;
-			default:
-				return false;
+	public:
+		structure_union_t() {}; // NOLINT(modernize-use-equals-default)
+
+		template <class Memory>
+		void serialize(Memory& memory) {
+			memory.copy(reinterpret_cast<uint8_t*>(this), sizeof(structure_union_t));
 		}
-	}
 
-	operator game_object_t&() { // NOLINT(hicpp-explicit-conversions)
-		return *reinterpret_cast<game_object_t*>(this);
-	}
+		operator structure_t&() { // NOLINT(hicpp-explicit-conversions)
+			return *reinterpret_cast<structure_t*>(this);
+		}
 
-	operator const game_object_t&() const { // NOLINT(hicpp-explicit-conversions)
-		return *reinterpret_cast<const game_object_t*>(this);
-	}
+		operator const structure_t&() const { // NOLINT(hicpp-explicit-conversions)
+			return *reinterpret_cast<const structure_t*>(this);
+		}
+
+		template <class Type>
+		Type* get() {
+			return const_cast<Type*>(const_cast<const structure_union_t*>(this)->get<Type>());
+		}
+
+		template <class Type>
+		const Type* get() const {
+			if (type == Type::k_type) {
+				return reinterpret_cast<const Type*>(this);
+			} else {
+				return nullptr;
+			}
+		}
+
+		template <class... Args>
+		decltype(auto) visit(Args&&... args) {
+			return store.visit(this, std::forward<Args>(args)...);
+		}
+
+		template <class... Args>
+		decltype(auto) visit(Args&&... args) const {
+			return store.visit(this, std::forward<Args>(args)...);
+		}
 };
 
 } // namespace screeps

@@ -4,59 +4,82 @@
 namespace screeps {
 
 void structure_t::init() {
+	// Base class
 	EM_ASM({
 		Module.screeps.object.initStructureLayout({
 			'sizeof': $0,
-			'structure': {
-				'structureType': $1,
-			},
-			'destroyable': {
-				'hits': $2,
-				'hitsMax': $3,
-			},
-			'owned': {
-				'my': $4,
-			},
-			'controller': {
-				'level': $5,
-				'progress': $6,
-				'progressTotal': $7,
-				'ticksToDowngrade': $8,
-				'upgradeBlocked': $9,
-			},
-			'extension': {
-				'energy': $10,
-				'energyCapacity': $11,
-			},
-			'spawn': {
-				'energy': $12,
-				'energyCapacity': $13,
-				'spawning': $14,
-				'spawningDirections': $15,
-				'spawningNeedTime': $16,
-				'spawningRemainingTime': $17,
-				'spawningName': $18,
-			},
+			'structureType': $1,
+			'hits': $2,
+			'hitsMax': $3,
+			'owner': $4,
+			'my': $5,
 		});
 	},
-		// structure
 		sizeof(structure_union_t),
 		offsetof(structure_t, type),
-		// destroyable structure
-		offsetof(destroyable_structure_t, hits),
-		offsetof(destroyable_structure_t, hits_max),
-		// owned structure
-		offsetof(owned_structure_t, my),
-		// controller
+		offsetof(structure_t, hits),
+		offsetof(structure_t, hits_max),
+		offsetof(structure_t, owner),
+		offsetof(structure_t, my)
+	);
+	// Container
+	EM_ASM({
+		Module.screeps.object.initStructureContainerLayout({
+			'store': $0,
+			'storeCapacity': $1,
+			'ticksToDecay': $2,
+		});
+	},
+		offsetof(container_t, store),
+		offsetof(container_t, store_capacity),
+		offsetof(container_t, ticks_to_decay)
+	);
+	// Controller
+	EM_ASM({
+		Module.screeps.object.initStructureControllerLayout({
+			'level': $0,
+			'progress': $1,
+			'progressTotal': $2,
+			'ticksToDowngrade': $3,
+			'upgradeBlocked': $4,
+		});
+	},
 		offsetof(controller_t, level),
 		offsetof(controller_t, progress),
 		offsetof(controller_t, progress_total),
 		offsetof(controller_t, ticks_to_downgrade),
-		offsetof(controller_t, upgrade_blocked),
-		// extension
+		offsetof(controller_t, upgrade_blocked)
+	);
+	// Extension
+	EM_ASM({
+		Module.screeps.object.initStructureExtensionLayout({
+			'energy': $0,
+			'energyCapacity': $1,
+		});
+	},
 		offsetof(extension_t, energy),
-		offsetof(extension_t, energy_capacity),
-		// spawn
+		offsetof(extension_t, energy_capacity)
+	);
+	// Road
+	EM_ASM({
+		Module.screeps.object.initStructureRoadLayout({
+			'ticksToDecay': $0
+		});
+	},
+		offsetof(road_t, ticks_to_decay)
+	);
+	// Spawn
+	EM_ASM({
+		Module.screeps.object.initStructureSpawnLayout({
+			'energy': $0,
+			'energyCapacity': $1,
+			'spawning': $2,
+			'spawningDirections': $3,
+			'spawningNeedTime': $4,
+			'spawningRemainingTime': $5,
+			'spawningName': $6,
+		});
+	},
 		offsetof(spawn_t, energy),
 		offsetof(spawn_t, energy_capacity),
 		offsetof(spawn_t, _is_spawning),

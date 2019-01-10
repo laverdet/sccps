@@ -14,10 +14,9 @@ void room_t::update_pointers() {
 	terminal = nullptr;
 */
 	for (auto& structure : structures) {
-		switch (structure.type) {
-			case structure_t::controller:
-				controller = &structure.controller;
-				break;
+		if (auto controller = structure.get<controller_t>(); controller != nullptr) {
+			this->controller = controller;
+		}
 /*
 			case structure_t::storage:
 				storage = &structure;
@@ -26,8 +25,6 @@ void room_t::update_pointers() {
 				terminal = &structure;
 				break;
 */
-			default:;
-		}
 	}
 }
 
