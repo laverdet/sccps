@@ -9,6 +9,9 @@ namespace screeps {
 
 // These will match the constants in game
 enum struct direction_t { top = 1, top_right, right, bottom_right, bottom, bottom_left, left, top_left };
+inline constexpr int operator+(direction_t resource) noexcept {
+	return static_cast<int>(resource);
+}
 std::ostream& operator<<(std::ostream& os, direction_t dir);
 
 // Abstract neighbor iterators

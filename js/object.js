@@ -148,6 +148,7 @@ let structureOwnedMy;
 let structureControllerLevel, structureControllerProgress, structureControllerProgressTotal, structureControllerTicksToDowngrade, structureControllerUpgradeBlocked;
 let structureExtensionEnergy, structureExtensionEnergyCapacity;
 let structureSpawnEnergy, structureSpawnEnergyCapacity;
+let structureSpawning, structureSpawningDirections, structureSpawningNeedTime, structureSpawningRemainingTime, structureSpawningName;
 
 const that = module.exports = {
 	initGameLayout(layout) {
@@ -241,6 +242,11 @@ const that = module.exports = {
 
 		structureSpawnEnergy = layout.spawn.energy;
 		structureSpawnEnergyCapacity = layout.spawn.energyCapacity;
+		structureSpawning = layout.spawn.spawning;
+		structureSpawningDirections = layout.spawn.spawningDirections;
+		structureSpawningNeedTime = layout.spawn.spawningNeedTime;
+		structureSpawningRemainingTime = layout.spawn.spawningRemainingTime;
+		structureSpawningName = layout.spawn.spawningName;
 	},
 
 	writeGame(env, ptr) {
@@ -484,6 +490,23 @@ const that = module.exports = {
 						case STRUCTURE_SPAWN:
 							env.writeInt32(ptr + structureSpawnEnergy, structure.energy);
 							env.writeInt32(ptr + structureSpawnEnergyCapacity, structure.energyCapacity);
+							if (structure.spawning) {
+								let bits = 0;
+								if (structure.spawning.directions !== undefined) {
+									let directions = structure.spawning.directions;
+									for (let ii = directions.length - 1; ii <= 0; --ii) {
+										bits <<= 4;
+										bits |= directions[ii];
+									}
+								}
+								env.writeInt32(ptr + structureSpawningDirections, bits);
+								env.writeInt32(ptr + structureSpawningNeedTime, structure.spawning.needTime);
+								env.writeInt32(ptr + structureSpawningRemainingTime, structure.spawning.remainingTime);
+								StringLib.writeOneByteString(env, ptr + structureSpawningName, structure.spawning.name);
+								env.writeInt8(ptr + structureSpawning, 1);
+							} else {
+								env.writeInt8(ptr + structureSpawning, 0);
+							}
 							break;
 					}
 				}
