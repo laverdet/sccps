@@ -48,10 +48,6 @@ class constexpr_neighbor_iteratable_t {
 					index += val;
 					return *this;
 				}
-
-				constexpr iterator operator+(int val) const {
-					return {origin, index + val};
-				}
 		};
 		Type origin;
 
@@ -98,10 +94,6 @@ class dynamic_neighbor_iterable_t {
 				constexpr iterator& operator+=(int val) {
 					direction += val;
 					return *this;
-				}
-
-				constexpr iterator operator+(int val) const {
-					return {origin, direction + val};
 				}
 		};
 		Type origin;
@@ -156,10 +148,6 @@ class area_iterable_t {
 				constexpr iterator& operator+=(int val) {
 					index += val;
 					return *this;
-				}
-
-				constexpr iterator operator+(int /* postfix */) const {
-					return {offset, width, index + 1};
 				}
 		};
 
@@ -220,10 +208,6 @@ class with_range_iterable_t {
 				constexpr iterator& operator+=(int val) {
 					index += val;
 					return *this;
-				}
-
-				constexpr iterator operator+(int val) const {
-					return {range, index + val};
 				}
 		};
 
@@ -558,10 +542,6 @@ struct local_position_t : coord_base_t<local_position_t> {
 				constexpr iterator& operator+=(int val) {
 					ii += val;
 					return *this;
-				}
-
-				constexpr iterator operator+(int val) const {
-					return iterator(ii + val);
 				}
 		};
 

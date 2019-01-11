@@ -63,7 +63,6 @@ class random_access_iterator_t {
 		constexpr bool operator==(const T& rhs) const;
 		constexpr bool operator<(const T& rhs) const;
 		constexpr T& operator+=(int val);
-		constexpr T operator+(int val) const;
 
 		constexpr bool operator!=(const T& rhs) const {
 			return !(that() == rhs);
@@ -95,13 +94,23 @@ class random_access_iterator_t {
 			return copy;
 		}
 
+		constexpr T& operator-=(int val) {
+			return that() += -val;
+		}
+
 		constexpr T& operator--() {
-			return that() += -1;
+			return that() -= 1;
 		}
 
 		constexpr T operator--(int) {
 			T copy(that());
-			that() += -1;
+			that() -= 1;
+			return copy;
+		}
+
+		constexpr T operator+(int val) const {
+			T copy(that());
+			copy += val;
 			return copy;
 		}
 
@@ -110,11 +119,13 @@ class random_access_iterator_t {
 		}
 
 		friend inline constexpr T operator+(int lhs, const T& rhs) {
-			return rhs + lhs;
+			lhs += rhs;
+			return lhs;
 		}
 
 		friend inline constexpr T operator-(int lhs, const T& rhs) {
-			return rhs + -lhs;
+			lhs -= rhs;
+			return lhs;
 		}
 };
 
