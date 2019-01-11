@@ -766,9 +766,6 @@ class local_matrix_t : public local_matrix_store_t<Type, Store, Pack> {
 
 } // namespace screeps
 
-template <class First, class Second>
-using first_t = First;
-
 // Hash specialization for hashing STL containers
 template <> struct std::hash<screeps::room_location_t> {
 	auto operator()(const screeps::room_location_t& val) const {
