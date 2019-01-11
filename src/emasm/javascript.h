@@ -40,8 +40,10 @@ int inline_javascript(const char* fragment, Args... args) {
 		([&](auto param) {
 			if constexpr (std::is_same_v<decltype(param), float> || std::is_same_v<decltype(param), double>) {
 				argv[ii++] = Nan::New<v8::Number>(static_cast<double>(param));
-			} else {
+			} else if constexpr (std::is_pointer_v<decltype(param)>) {
 				argv[ii++] = Nan::New<v8::Number>(static_cast<double>((size_t)param));
+			} else {
+				argv[ii++] = Nan::New<v8::Number>((int)param);
 			}
 		}(args), ...);
 		auto value = unwrap_maybe(Nan::Call(fn, Nan::GetCurrentContext()->Global(), ii, argv));
