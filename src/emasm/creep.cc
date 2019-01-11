@@ -71,6 +71,16 @@ int creep_t::upgrade_controller(const game_object_t& target) const {
 	}, &this->id, &target.id);
 }
 
+int creep_t::withdraw(const game_object_t& target, resource_t resource, int amount) const {
+	return EM_ASM_INT({
+		return Module.screeps.util.getObjectById(Module, $0).withdraw(
+			Module.screeps.util.getObjectById(Module, $1),
+			Module.screeps.object.readResourceType($2),
+			$3 === -1 ? undefined : $3
+		);
+	}, &this->id, &target.id, resource, amount);
+}
+
 //int creep_t::withdraw(const game_object_t& target, resource_t resource, int amount = -1) const;
 
 void creep_t::init() {
