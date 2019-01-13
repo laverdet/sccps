@@ -171,6 +171,13 @@ class game_state_t {
 			return construction_sites_by_id.find(construction_sites, id);
 		}
 
+		creep_t* creep_by_id(const sid_t& id) {
+			return creeps_by_id.find(rooms, id);
+		}
+		const creep_t* creep_by_id(const sid_t& id) const {
+			return creeps_by_id.find(rooms, id);
+		}
+
 		creep_t* creep_by_name(const creep_t::name_t& name) {
 			return creeps_by_name.find(rooms, name);
 		}
