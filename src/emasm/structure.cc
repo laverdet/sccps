@@ -26,12 +26,10 @@ void structure_t::init() {
 	EM_ASM({
 		Module.screeps.object.initStructureContainerLayout({
 			'store': $0,
-			'storeCapacity': $1,
-			'ticksToDecay': $2,
+			'ticksToDecay': $1,
 		});
 	},
 		offsetof(container_t, store),
-		offsetof(container_t, store_capacity),
 		offsetof(container_t, ticks_to_decay)
 	);
 	// Controller

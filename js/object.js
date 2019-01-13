@@ -82,7 +82,7 @@ const [ bodyPartEnum, bodyPartEnumReverse ] = util.enumToMap([
 	WORK,
 ]);
 let creepSizeof;
-let creepBody, creepCarry, creepCarryCapacity, creepFatigue, creepHits, creepHitsMax, creepMy, creepName, creepSpawning, creepTicksToLive;
+let creepBody, creepCarry, creepFatigue, creepHits, creepHitsMax, creepMy, creepName, creepSpawning, creepTicksToLive;
 let creepBodyPartSizeof, creepBodyPartBoost, creepBodyPartType;
 
 // dropped_resource_t
@@ -143,7 +143,7 @@ const [ structureTypeEnum, structureTypeEnumReverse ] = util.enumToMap([
 ]);
 let structureSizeof;
 let structureStructureType, structureHits, structureHitsMax, structureOwner, structureMy;
-let structureContainerStore, structureContainerStoreCapacity, structureContainerTicksToDecay;
+let structureContainerStore, structureContainerTicksToDecay;
 let structureControllerLevel, structureControllerProgress, structureControllerProgressTotal, structureControllerTicksToDowngrade, structureControllerUpgradeBlocked;
 let structureExtensionEnergy, structureExtensionEnergyCapacity;
 let structureRoadTicksToDecay;
@@ -172,7 +172,6 @@ const that = module.exports = {
 		creepSizeof = layout.sizeof;
 		creepBody = layout.body;
 		creepCarry = layout.carry;
-		creepCarryCapacity = layout.carryCapacity;
 		creepFatigue = layout.fatigue;
 		creepHits = layout.hits;
 		creepHitsMax = layout.hitsMax;
@@ -235,7 +234,6 @@ const that = module.exports = {
 
 	initStructureContainerLayout(layout) {
 		structureContainerStore = layout.store;
-		structureContainerStoreCapacity = layout.storeCapacity;
 		structureContainerTicksToDecay = layout.ticksToDecay;
 	},
 
@@ -409,12 +407,11 @@ const that = module.exports = {
 
 	writeCreep(env, ptr, creep) {
 		that.writeGameObject(env, ptr, creep);
-		that.writeResourceStore(env, ptr + creepCarry, creep.carry);
+		that.writeResourceStore(env, ptr + creepCarry, creep.carry, creep.carryCapacity);
 		ArrayLib.write(env, ptr + creepBody, creepBodyPartSizeof, 50, creep.body, function(env, ptr, part) {
 			env.writeInt32(ptr + creepBodyPartBoost, resourceEnum.get(part.boost));
 			env.writeInt32(ptr + creepBodyPartType, bodyPartEnum.get(part.type));
 		});
-		env.writeInt32(ptr + creepCarryCapacity, creep.carryCapacity);
 		env.writeInt32(ptr + creepFatigue, creep.fatigue);
 		env.writeInt32(ptr + creepHits, creep.hits);
 		env.writeInt32(ptr + creepHitsMax, creep.hitsMax);
@@ -442,28 +439,18 @@ const that = module.exports = {
 		env.writeInt32(ptr + mineralTicksToRegeneration, mineral.ticksToRegeneration);
 	},
 
-	writeResourceStore(env, ptr, store) {
+	writeResourceStore(env, ptr, store, capacity) {
 		let keys = Object.keys(store);
 		if (keys.length == 0) {
-			env.writeInt32(ptr + 4, 0); // single_amount
-			env.writePtr(ptr + 8, 0); // extended
+			env.writeInt32(ptr + 8, 0); // single_amount
 		} else if (keys.length == 1) {
 			let type = keys[0];
-			env.writeInt32(ptr, resourceEnum.get(type)); // single_type
-			env.writeInt32(ptr + 4, store[type]); // single_amount
-			env.writePtr(ptr + 8, 0); // extended
+			env.writeInt32(ptr + 4, resourceEnum.get(type)); // single_type
+			env.writeInt32(ptr + 8, store[type]); // single_amount
 		} else {
 			throw new Error('More than one resource');
-			/*
-			let extended = ArrayLib.push(env, extendedResourceStorePtr, extendedResourceStoreSizeof, 100);
-			env.Int32.fill(extended >> 2, (extended + extendedResourceStoreSizeof) >> 2, 0);
-			env.Int32[ptr >> 2] = extended | 0;
-			for (let ii = keys.length - 1; ii >= 0; --ii) {
-				let key = keys[ii];
-				env.Int32[(extended + resourceEnum.get(key) * 4, store[key] | 0;
-			}
-			*/
 		}
+		env.writeInt32(ptr + 0, 0); // capacity
 	},
 
 	writeSource(env, ptr, source) {
@@ -482,8 +469,7 @@ const that = module.exports = {
 		env.writeInt8(ptr + structureMy, structure.my);
 		switch (structure.structureType) {
 			case STRUCTURE_CONTAINER:
-				that.writeResourceStore(env, ptr + structureContainerStore, structure.store);
-				env.writeInt32(ptr + structureContainerStoreCapacity, structure.storeCapacity);
+				that.writeResourceStore(env, ptr + structureContainerStore, structure.store, structure.storeCapacity);
 				env.writeInt32(ptr + structureContainerTicksToDecay, structure.ticksToDecay);
 				break;
 

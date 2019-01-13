@@ -9,7 +9,6 @@ namespace screeps {
  * game_state_t implementation
  */
 void game_state_t::load() {
-	resource_store_t::preloop();
 
 	// Reset memory for flags and sites
 	construction_sites_memory.reset(construction_sites);
@@ -121,7 +120,6 @@ void game_state_t::init_layout() {
 		offsetof(game_state_t, time)
 	);
 	creep_t::init();
-	resource_store_t::init();
 	room_t::init();
 	structure_t::init();
 }

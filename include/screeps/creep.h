@@ -43,7 +43,6 @@ struct creep_active_bodypart_t {
 
 struct creep_t : game_object_t {
 	using name_t = string_t<20>;
-	int32_t carry_capacity;
 	int32_t fatigue;
 	int32_t hits;
 	int32_t hits_max;
@@ -109,7 +108,7 @@ struct creep_t : game_object_t {
 	template <class Memory>
 	void serialize(Memory& memory) {
 		game_object_t::serialize(memory);
-		memory & carry_capacity & fatigue & hits & hits_max & ticks_to_live;
+		memory & fatigue & hits & hits_max & ticks_to_live;
 		memory & carry & name & body & spawning & my;
 	}
 

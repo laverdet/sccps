@@ -40,142 +40,82 @@ struct energy_store_t {
 // `store` or `carry` on game objects. Optimized in the case <=1 resource type is in the store, and
 // will reference an external location if more resources are stored.
 struct resource_store_t {
-	public:
-		using value_type = int32_t;
-		struct reference {
-			const resource_t type;
-			value_type& amount;
-			reference(resource_t type, value_type& amount) : type(type), amount(amount) {}
-		};
-
 	private:
-		using extended_resource_store_t = std::array<value_type, (int)resource_t::size>;
-		static inline array_t<extended_resource_store_t, kExtraStoreReservation> extended_stores;
-		resource_t single_type;
-		value_type single_amount;
-		extended_resource_store_t* extended;
-
-		void promote() {
-			extended = &extended_stores.emplace_back();
-			(*extended)[(int)single_type] = single_amount;
-		}
-
-		template <typename store_type, typename reference_type>
-		class iterator_base {
-			private:
-				store_type& store;
-				resource_t type;
-
-			public:
-				iterator_base(store_type& store, resource_t type) : store(store), type(type) {
-					if (store.extended != nullptr && type != resource_t::size && (*store.extended)[(int)type] == 0) {
-						++(*this);
-					}
-				}
-				iterator_base(const iterator_base&) = default;
-				iterator_base& operator=(const iterator_base&) = default;
-				~iterator_base() = default;
-
-				reference operator*() const {
-					if (store.extended) {
-						return reference(type, const_cast<value_type&>((*store.extended)[(int)type]));
-					} else {
-						return reference(type, const_cast<value_type&>(store.single_amount));
-					}
-				}
-
-				iterator_base& operator++() {
-					if (store.extended == nullptr) {
-						type = resource_t::size;
-					} else {
-						do {
-							type = static_cast<resource_t>((int)type + 1);
-						} while (type != resource_t::size && (*store.extended)[(int)type] == 0);
-					}
-					return *this;
-				}
-
-				iterator_base operator++(int) {
-					iterator_base copy(*this);
-					++(*this);
-					return copy;
-				}
-
-				bool operator!=(const iterator_base& rhs) const {
-					return type != rhs.type;
-				}
+		using mapped_type = int32_t;
+		struct secret_value_type {
+			resource_t type;
+			mapped_type amount;
 		};
 
 	public:
-		using iterator = iterator_base<resource_store_t, reference>;
-		using const_iterator = iterator_base<const resource_store_t, const reference>;
+		int32_t capacity;
+	private:
+		secret_value_type single;
 
-		static void init();
-		static void preloop();
+	public:
+		struct value_type {
+			const resource_t type;
+			int32_t amount;
+		};
+		using iterator = value_type*;
+		using const_iterator = const value_type*;
 
 		template <class Memory>
 		void serialize(Memory& memory) {
-			memory & single_type & single_amount;
-			if constexpr (Memory::is_reader) {
-				extended = nullptr;
-			} else if (extended != nullptr) {
-				throw std::runtime_error("extended error");
-			}
+			memory & capacity & single.type & single.amount;
 		}
 
-		value_type& operator[](resource_t type) {
-			if (extended == nullptr) {
-				if (single_amount == 0) {
-					single_type = type;
-					return single_amount;
-				} else if (single_type == type) {
-					return single_amount;
-				} else {
-					promote();
-				}
-			}
-			return (*extended)[(int)type];
-		}
-
-		value_type operator[](resource_t type) const {
-			if (extended == nullptr) {
-				// nb: In the case where this store has nothing then only `single_amount` will be set,
-				// `single_type` will be garbage
-				if (single_amount == 0 || single_type != type) {
-					return 0;
-				} else {
-					return single_amount;
-				}
-			}
-			return (*extended)[(int)type];
-		}
-
-		value_type sum() const {
-			if (extended == nullptr) {
-				return single_amount;
+		mapped_type& operator[](resource_t type) {
+			if (single.amount == 0) {
+				single.type = type;
+				return single.amount;
+			} else if (single.type == type) {
+				return single.amount;
 			} else {
-				value_type sum = 0;
-				for (auto& ii : *extended) {
-					sum += ii;
-				}
-				return sum;
+				throw std::runtime_error("resource_t::operator[]");
 			}
+		}
+
+		mapped_type operator[](resource_t type) const {
+			// nb: In the case where this store has nothing then only `single_amount` will be set,
+			// `single_type` will be garbage
+			if (single.amount == 0 || single.type != type) {
+				return 0;
+			} else {
+				return single.amount;
+			}
+		}
+
+		size_t size() const {
+			return end() - begin();
+		}
+
+		mapped_type sum() const {
+			return single.amount;
 		}
 
 		iterator begin() {
-			return iterator(*this, extended == nullptr ? single_type : resource_t::energy);
+			return reinterpret_cast<iterator>(&single);
 		}
 
 		iterator end() {
-			return iterator(*this, resource_t::size);
+			if (single.amount == 0) {
+				return begin();
+			} else {
+				return begin() + 1;
+			}
 		}
 
 		const_iterator begin() const {
-			return const_iterator(*this, extended == nullptr ? single_type : resource_t::energy);
+			return reinterpret_cast<const_iterator>(&single);
 		}
 
 		const_iterator end() const {
-			return const_iterator(*this, resource_t::size);
+			if (single.amount == 0) {
+				return begin();
+			} else {
+				return begin() + 1;
+			}
 		}
 };
 

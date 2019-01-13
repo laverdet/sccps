@@ -55,8 +55,4 @@ std::ostream& operator<<(std::ostream& os, resource_t type) {
 	return os <<static_cast<int>(type);
 }
 
-void resource_store_t::preloop() {
-	extended_stores.clear();
-}
-
 } // namespace screeps
