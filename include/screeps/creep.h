@@ -47,7 +47,7 @@ struct creep_t : game_object_t {
 	int32_t fatigue;
 	int32_t hits;
 	int32_t hits_max;
-	int32_t ticksToLive; // TODO: Fix casing
+	int32_t ticks_to_live;
 	resource_store_t carry;
 	name_t name;
 	array_t<creep_bodypart_t, kMaxCreepSize> body;
@@ -109,7 +109,7 @@ struct creep_t : game_object_t {
 	template <class Memory>
 	void serialize(Memory& memory) {
 		game_object_t::serialize(memory);
-		memory & carry_capacity & fatigue & hits & hits_max & ticksToLive;
+		memory & carry_capacity & fatigue & hits & hits_max & ticks_to_live;
 		memory & carry & name & body & spawning & my;
 	}
 
