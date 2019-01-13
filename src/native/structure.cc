@@ -10,4 +10,12 @@ int spawn_t::spawn_creep(const body_t& /* body */, const std::string& name, cons
 	return 0;
 }
 
+void spawn_t::spawning_t::cancel() const {
+	std::cerr <<this->spawn() <<".spawning.cancel()\n";
+}
+
+void spawn_t::spawning_t::set_directions(directions_t directions) const {
+	std::cerr <<this->spawn() <<".spawning.set_directions(...)\n";
+}
+
 } // namespace screeps
