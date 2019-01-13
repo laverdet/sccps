@@ -32,6 +32,11 @@ inline constexpr int operator+(resource_t resource) noexcept {
 	return static_cast<int>(resource);
 }
 
+struct energy_store_t {
+	int32_t energy;
+	int32_t energy_capacity;
+};
+
 // `store` or `carry` on game objects. Optimized in the case <=1 resource type is in the store, and
 // will reference an external location if more resources are stored.
 struct resource_store_t {

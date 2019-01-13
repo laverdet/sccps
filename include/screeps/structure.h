@@ -67,10 +67,8 @@ struct container_t : structure_t {
 	int32_t ticks_to_decay;
 };
 
-struct extension_t : structure_t {
+struct extension_t : structure_t, energy_store_t {
 	static constexpr auto k_type = structure_t::extension;
-	int32_t energy;
-	int32_t energy_capacity;
 };
 
 struct road_t : structure_t {
@@ -148,7 +146,7 @@ struct _spawn_structs_t {
 	};
 };
 
-struct spawn_t : structure_t {
+struct spawn_t : structure_t, energy_store_t {
 	static constexpr auto k_type = structure_t::spawn;
 	using body_t = _spawn_structs_t::body_t;
 	using directions_t = _spawn_structs_t::directions_t;
@@ -175,8 +173,6 @@ struct spawn_t : structure_t {
 			spawning_t() = default;
 	};
 
-	int32_t energy;
-	int32_t energy_capacity;
 	union {
 		struct {
 			spawning_t _spawning;
@@ -242,6 +238,16 @@ union structure_union_t {
 
 		operator const structure_t&() const { // NOLINT(hicpp-explicit-conversions)
 			return *reinterpret_cast<const structure_t*>(this);
+		}
+
+		template <class Type>
+		Type& as() {
+			return const_cast<Type&>(const_cast<const structure_union_t*>(this)->as<Type>());
+		}
+
+		template <class Type>
+		const Type& as() const {
+			return *static_cast<const Type*>(reinterpret_cast<const structure_t*>(this));
 		}
 
 		template <class Type>
