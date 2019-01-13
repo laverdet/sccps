@@ -3,56 +3,59 @@
 
 namespace screeps {
 
-int creep_t::build(const game_object_t& target) const {
-	std::cerr <<*this <<".build(" <<target <<")\n";
+int creep_t::static_method::build(const sid_t& creep, const sid_t& target) {
+	std::cerr <<creep <<".build(" <<target <<")\n";
 	return 0;
 }
 
-int creep_t::cancel_order(const char* method) const {
-	std::cerr <<*this <<".cancel_order(" <<method <<")\n";
+int creep_t::static_method::cancel_order(const sid_t& creep, const char* method) {
+	std::cerr <<creep <<".cancel_order(" <<method <<")\n";
 	return 0;
 }
 
-int creep_t::drop(resource_t resource, int amount) const {
-	std::cerr <<*this <<".drop(" <<resource <<", " <<amount <<")\n";
+int creep_t::static_method::drop(const sid_t& creep, resource_t resource, int amount) {
+	std::cerr <<creep <<".drop(" <<resource <<", " <<amount <<")\n";
 	return 0;
 }
 
-int creep_t::harvest(const game_object_t& target) const {
-	std::cerr <<*this <<".harvest(" <<target <<")\n";
+int creep_t::static_method::harvest(const sid_t& creep, const sid_t& target) {
+	std::cerr <<creep <<".harvest(" <<target <<")\n";
 	return 0;
 }
 
-int creep_t::move(direction_t direction) const {
-	std::cerr <<*this <<".move(" <<direction <<")\n";
+int creep_t::static_method::move(const sid_t& creep, direction_t direction) {
+	std::cerr <<creep <<".move(" <<direction <<")\n";
 	return 0;
 }
 
-int creep_t::pickup(const game_object_t& target) const {
-	std::cerr <<*this <<".pickup(" <<target <<")\n";
+int creep_t::static_method::pickup(const sid_t& creep, const sid_t& target) {
+	std::cerr <<creep <<".pickup(" <<target <<")\n";
 	return 0;
 }
 
-int creep_t::repair(const game_object_t& target) const {
-	std::cerr <<*this <<".repair(" <<target <<")\n";
+int creep_t::static_method::repair(const sid_t& creep, const sid_t& target) {
+	std::cerr <<creep <<".repair(" <<target <<")\n";
 	return 0;
 }
 
-int creep_t::suicide() const {
-	std::cerr <<*this <<".suicide()\n";
+int creep_t::static_method::suicide(const sid_t& creep) {
+	std::cerr <<creep <<".suicide()\n";
 	return 0;
 }
 
-int creep_t::transfer(const game_object_t& target, resource_t resource, int amount) const {
-	std::cerr <<*this <<".transfer(" <<target <<", " <<resource <<", " <<amount <<")\n";
+int creep_t::static_method::transfer(const sid_t& creep, const sid_t& target, resource_t resource, int amount) {
+	std::cerr <<creep <<".transfer(" <<target <<", " <<resource <<", " <<amount <<")\n";
 	return 0;
 }
 
-int creep_t::upgrade_controller(const game_object_t& target) const {
-	std::cerr <<*this <<".upgrade_controller(" <<target <<")\n";
+int creep_t::static_method::upgrade_controller(const sid_t& creep, const sid_t& target) {
+	std::cerr <<creep <<".upgrade_controller(" <<target <<")\n";
 	return 0;
 }
 
-//int creep_t::withdraw(const game_object_t& target, resource_t resource, int amount = -1) const;
+int creep_t::static_method::withdraw(const sid_t& creep, const sid_t& target, resource_t resource, int amount) {
+	std::cerr <<creep <<".transfer(" <<target <<", " <<resource <<", " <<amount <<")\n";
+	return 0;
+}
 
 } // namespace screeps

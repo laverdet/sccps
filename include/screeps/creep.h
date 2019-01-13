@@ -56,17 +56,53 @@ struct creep_t : game_object_t {
 	bool spawning;
 	bool my;
 
-	int build(const game_object_t& target) const;
-	int cancel_order(const char* method) const;
-	int drop(resource_t resource, int amount = -1) const;
-	int harvest(const game_object_t& target) const;
-	int move(direction_t direction) const;
-	int pickup(const game_object_t& target) const;
-	int repair(const game_object_t& target) const;
-	int suicide() const;
-	int transfer(const game_object_t& target, resource_t resource, int amount = -1) const;
-	int upgrade_controller(const game_object_t& target) const;
-	int withdraw(const game_object_t& target, resource_t resource, int amount = -1) const;
+	struct static_method {
+		static int build(const sid_t& creep, const sid_t& target);
+		static int cancel_order(const sid_t& creep, const char* method);
+		static int drop(const sid_t& creep, resource_t resource, int amount = -1);
+		static int harvest(const sid_t& creep, const sid_t& target);
+		static int move(const sid_t& creep, direction_t direction);
+		static int pickup(const sid_t& creep, const sid_t& target);
+		static int repair(const sid_t& creep, const sid_t& target);
+		static int suicide(const sid_t& creep);
+		static int transfer(const sid_t& creep, const sid_t& target, resource_t resource, int amount = -1);
+		static int upgrade_controller(const sid_t& creep, const sid_t& target);
+		static int withdraw(const sid_t& creep, const sid_t& target, resource_t resource, int amount = -1);
+	};
+
+	int build(const game_object_t& target) const {
+		return static_method::build(id, target.id);
+	}
+	int cancel_order(const char* method) const {
+		return static_method::cancel_order(id, method);
+	}
+	int drop(resource_t resource, int amount = -1) const {
+		return static_method::drop(id, resource, amount);
+	}
+	int harvest(const game_object_t& target) const {
+		return static_method::harvest(id, target.id);
+	}
+	int move(direction_t direction) const {
+		return static_method::move(id, direction);
+	}
+	int pickup(const game_object_t& target) const {
+		return static_method::pickup(id, target.id);
+	}
+	int repair(const game_object_t& target) const {
+		return static_method::repair(id, target.id);
+	}
+	int suicide() const {
+		return static_method::suicide(id);
+	}
+	int transfer(const game_object_t& target, resource_t resource, int amount = -1) const {
+		return static_method::transfer(id, target.id, resource, amount);
+	}
+	int upgrade_controller(const game_object_t& target) const {
+		return static_method::upgrade_controller(id, target.id);
+	}
+	int withdraw(const game_object_t& target, resource_t resource, int amount = -1) const {
+		return static_method::withdraw(id, target.id, resource, amount);
+	}
 
 	const std::vector<creep_active_bodypart_t> get_active_bodyparts() const;
 

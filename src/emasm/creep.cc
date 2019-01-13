@@ -4,84 +4,82 @@
 
 namespace screeps {
 
-int creep_t::build(const game_object_t& target) const {
+int creep_t::static_method::build(const sid_t& creep, const sid_t& target) {
 	return EM_ASM_INT({
 		return Module.screeps.util.getObjectById(Module, $0).build(Module.screeps.util.getObjectById(Module, $1));
-	}, &this->id, &target.id);
+	}, &creep, &target);
 }
 
-int creep_t::cancel_order(const char* method) const {
+int creep_t::static_method::cancel_order(const sid_t& creep, const char* method) {
 	return EM_ASM_INT({
 		return Module.screeps.util.getObjectById(Module, $0).cancelOrder(Module.screeps.string.readOneByteStringData(Module, $1, $2));
-	}, &this->id, method, strlen(method));
+	}, &creep, method, strlen(method));
 }
 
-int creep_t::drop(resource_t resource, int amount) const {
+int creep_t::static_method::drop(const sid_t& creep, resource_t resource, int amount) {
 	return EM_ASM_INT({
 		return Module.screeps.util.getObjectById(Module, $0).drop(
 			Module.screeps.object.readResourceType($1),
 			$2 === -1 ? undefined : $2
 		);
-	}, &this->id, resource, amount);
+	}, &creep, resource, amount);
 }
 
-int creep_t::harvest(const game_object_t& target) const {
+int creep_t::static_method::harvest(const sid_t& creep, const sid_t& target) {
 	return EM_ASM_INT({
 		return Module.screeps.util.getObjectById(Module, $0).harvest(Module.screeps.util.getObjectById(Module, $1));
-	}, &this->id, &target.id);
+	}, &creep, &target);
 }
 
-int creep_t::move(direction_t direction) const {
+int creep_t::static_method::move(const sid_t& creep, direction_t direction) {
 	return EM_ASM_INT({
 		return Module.screeps.util.getObjectById(Module, $0).move($1);
-	}, &this->id, direction);
+	}, &creep, direction);
 }
 
-int creep_t::pickup(const game_object_t& target) const {
+int creep_t::static_method::pickup(const sid_t& creep, const sid_t& target) {
 	return EM_ASM_INT({
 		return Module.screeps.util.getObjectById(Module, $0).pickup(Module.screeps.util.getObjectById(Module, $1));
-	}, &this->id, &target.id);
+	}, &creep, &target);
 }
 
-int creep_t::repair(const game_object_t& target) const {
+int creep_t::static_method::repair(const sid_t& creep, const sid_t& target) {
 	return EM_ASM_INT({
 		return Module.screeps.util.getObjectById(Module, $0).repair(Module.screeps.util.getObjectById(Module, $1));
-	}, &this->id, &target.id);
+	}, &creep, &target);
 }
 
-int creep_t::suicide() const {
+int creep_t::static_method::suicide(const sid_t& creep) {
 	return EM_ASM_INT({
 		return Module.screeps.util.getObjectById(Module, $0).suicide();
-	}, &this->id);
+	}, &creep);
 }
 
-int creep_t::transfer(const game_object_t& target, resource_t resource, int amount) const {
+int creep_t::static_method::transfer(const sid_t& creep, const sid_t& target, resource_t resource, int amount) {
 	return EM_ASM_INT({
 		return Module.screeps.util.getObjectById(Module, $0).transfer(
 			Module.screeps.util.getObjectById(Module, $1),
 			Module.screeps.object.readResourceType($2),
 			$3 === -1 ? undefined : $3
 		);
-	}, &this->id, &target.id, resource, amount);
+	}, &creep, &target, resource, amount);
 }
 
-int creep_t::upgrade_controller(const game_object_t& target) const {
+int creep_t::static_method::upgrade_controller(const sid_t& creep, const sid_t& target) {
 	return EM_ASM_INT({
 		return Module.screeps.util.getObjectById(Module, $0).upgradeController(Module.screeps.util.getObjectById(Module, $1));
-	}, &this->id, &target.id);
+	}, &creep, &target);
 }
 
-int creep_t::withdraw(const game_object_t& target, resource_t resource, int amount) const {
+int creep_t::static_method::withdraw(const sid_t& creep, const sid_t& target, resource_t resource, int amount) {
 	return EM_ASM_INT({
 		return Module.screeps.util.getObjectById(Module, $0).withdraw(
 			Module.screeps.util.getObjectById(Module, $1),
 			Module.screeps.object.readResourceType($2),
 			$3 === -1 ? undefined : $3
 		);
-	}, &this->id, &target.id, resource, amount);
+	}, &creep, &target, resource, amount);
 }
-
-//int creep_t::withdraw(const game_object_t& target, resource_t resource, int amount = -1) const;
 
 void creep_t::init() {
 	EM_ASM({
