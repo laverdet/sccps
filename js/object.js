@@ -450,7 +450,7 @@ const that = module.exports = {
 		} else {
 			throw new Error('More than one resource');
 		}
-		env.writeInt32(ptr + 0, 0); // capacity
+		env.writeInt32(ptr, capacity); // capacity
 	},
 
 	writeSource(env, ptr, source) {
