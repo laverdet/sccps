@@ -133,6 +133,13 @@ struct _spawn_structs_t {
 
 			constexpr directions_t(std::initializer_list<direction_t> list) : directions_t(list.begin(), list.end()) {}
 
+			constexpr bool operator==(directions_t that) const {
+				return bits == that.bits;
+			}
+			constexpr bool operator!=(directions_t that) const {
+				return !(*this == that);
+			}
+
 			constexpr iterator begin() const {
 				return iterator(bits);
 			}
