@@ -12,6 +12,37 @@ enum struct direction_t { top = 1, top_right, right, bottom_right, bottom, botto
 inline constexpr int operator+(direction_t resource) noexcept {
 	return static_cast<int>(resource);
 }
+inline constexpr direction_t& operator+=(direction_t& direction, int value) noexcept {
+	// Double modulus to handle negatives
+	direction = static_cast<direction_t>(((+direction + value - 1) % 8 + 8) % 8 + 1);
+	return direction;
+}
+inline constexpr direction_t& operator-=(direction_t& direction, int value) noexcept {
+	direction += -value;
+	return direction;
+}
+inline constexpr direction_t& operator++(direction_t& direction) noexcept {
+	direction += 1;
+	return direction;
+}
+inline constexpr direction_t& operator--(direction_t& direction) noexcept {
+	direction -= 1;
+	return direction;
+}
+inline constexpr direction_t operator++(direction_t direction, int /* postfix */) noexcept {
+	return ++direction;
+}
+inline constexpr direction_t operator--(direction_t direction, int /* postfix */) noexcept {
+	return --direction;
+}
+inline constexpr direction_t operator+(direction_t direction, int value) noexcept {
+	direction += value;
+	return direction;
+}
+inline constexpr direction_t operator-(direction_t direction, int value) noexcept {
+	direction -= value;
+	return direction;
+}
 std::ostream& operator<<(std::ostream& os, direction_t dir);
 
 // Abstract neighbor iterators
@@ -562,10 +593,10 @@ struct local_position_t : coord_base_t<local_position_t> {
 // This represents a position in a continuous plane of the whole world. `roomName` is implied from
 // xx and yy.
 struct position_t : coord_base_t<position_t> {
-	using coord_base = coord_base_t<position_t>;
-	using coord_base::coord_base_t;
-	constexpr position_t(room_location_t room, local_position_t pos) : coord_base(room.ux * 50 + pos.ux, room.uy * 50 + pos.uy, 0) {}
-	constexpr position_t(room_location_t room, int xx, int yy) : coord_base(room.ux * 50 + xx, room.uy * 50 + yy, 0) {}
+	using coord_base_t::coord_base_t;
+	position_t() = default; // vscode for some reason doesn't see the default ctor from coord_base_t
+	constexpr position_t(room_location_t room, local_position_t pos) : coord_base_t(room.ux * 50 + pos.ux, room.uy * 50 + pos.uy, 0) {}
+	constexpr position_t(room_location_t room, int xx, int yy) : coord_base_t(room.ux * 50 + xx, room.uy * 50 + yy, 0) {}
 
 	constexpr room_location_t room_location() const {
 		return {ux / 50u, uy / 50u, 0};
