@@ -12,6 +12,11 @@ constexpr int kMaxFlagNameLength = 60;
 constexpr int k_world_size = 256;
 constexpr int k_world_size2 = k_world_size >> 1;
 
+// These don't exist in JS Screeps
+constexpr int k_build_range = 3;
+constexpr int k_repair_range = 3;
+constexpr int k_upgrade_controller_range = 3;
+
 // Error codes
 constexpr int k_ok = 0;
 constexpr int k_err_not_owner = -1;
