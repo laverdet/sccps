@@ -114,6 +114,7 @@ struct _spawn_structs_t {
 						return *this;
 					}
 			};
+			using const_iterator = iterator;
 
 			constexpr directions_t() = default;
 

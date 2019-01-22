@@ -48,7 +48,7 @@ std::ostream& operator<<(std::ostream& os, direction_t dir);
 // Abstract neighbor iterators
 template <typename Type, direction_t... Neighbors>
 class constexpr_neighbor_iteratable_t {
-	private:
+	public:
 		class iterator : public random_access_iterator_t<iterator> {
 			private:
 				Type origin;
@@ -80,6 +80,9 @@ class constexpr_neighbor_iteratable_t {
 					return *this;
 				}
 		};
+		using const_iterator = iterator;
+
+	private:
 		Type origin;
 
 	public:
@@ -96,7 +99,7 @@ class constexpr_neighbor_iteratable_t {
 
 template <typename Type>
 class dynamic_neighbor_iterable_t {
-	private:
+	public:
 		class iterator : public random_access_iterator_t<iterator> {
 			private:
 				Type origin;
@@ -127,6 +130,9 @@ class dynamic_neighbor_iterable_t {
 					return *this;
 				}
 		};
+		using const_iterator = iterator;
+
+	private:
 		Type origin;
 		const direction_t* _begin;
 		const direction_t* _end;
@@ -151,7 +157,7 @@ class dynamic_neighbor_iterable_t {
 
 template <typename Type>
 class area_iterable_t {
-	private:
+	public:
 		class iterator : public random_access_iterator_t<iterator> {
 			private:
 				unsigned int offset = 0, width = 0, index = 0;
@@ -181,7 +187,9 @@ class area_iterable_t {
 					return *this;
 				}
 		};
+		using const_iterator = iterator;
 
+	private:
 		unsigned int offset, width, index, final_index;
 
 	public:
@@ -203,7 +211,7 @@ class area_iterable_t {
 
 template <typename Type>
 class with_range_iterable_t {
-	private:
+	public:
 		class iterator : public random_access_iterator_t<iterator> {
 			private:
 				Type origin;
@@ -241,7 +249,9 @@ class with_range_iterable_t {
 					return *this;
 				}
 		};
+		using const_iterator = iterator;
 
+	private:
 		Type origin;
 		int range, _begin, _end;
 
@@ -575,6 +585,7 @@ struct local_position_t : coord_base_t<local_position_t> {
 					return *this;
 				}
 		};
+		using const_iterator = iterator;
 
 		constexpr iterator begin() const {
 			return iterator(0);
@@ -641,7 +652,7 @@ class local_matrix_store_t<Type, Store, Pack, false> {
 	protected:
 		std::array<Store, 2500> costs;
 		using reference = Type&;
-		using const_reference = typename std::conditional<std::is_trivial<Type>::value && sizeof(Type) <= sizeof(size_t), Type, const Type&>::type;
+		using const_reference = const Type&;
 
 	public:
 		constexpr local_matrix_store_t() = default;
