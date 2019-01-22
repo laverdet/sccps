@@ -25,7 +25,9 @@ $(BUILD_PATH)/%.o: %.cc | $$(@D)/. compile_flags.txt
 
 # DEFLATE
 %.js.deflate: %.js | $(SCREEPS_PATH)/node_modules
-	$(UGLIFY) $< | $(DEFLATE) > $@
+	$(UGLIFY) $< > $@.tmp
+	$(DEFLATE) < $@.tmp > $@
+	$(RM) $@.tmp
 %.map.deflate: %.js.map
 	$(STRIP_MAP) < $< | $(DEFLATE) > $@
 %.wasm.deflate: %.wasm
@@ -44,7 +46,7 @@ $(BUILD_PATH)/%.o: %.cc | $$(@D)/. compile_flags.txt
 
 # Install npm dependencies
 $(SCREEPS_PATH)/node_modules: $(SCREEPS_PATH)/package.json
-	cd $(SCREEPS_PATH); npm install && touch $@
+	cd $(dir $@); npm install && touch $(notdir $@)
 
 # Used to silence "... is up to date" messages. Also used to force recursive targets to run.
 .PHONY: nothing

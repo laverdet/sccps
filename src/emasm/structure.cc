@@ -104,11 +104,11 @@ spawn_t::body_t:: body_t(const std::vector<bodypart_t>& parts) : internal::js_ha
 
 int spawn_t::spawn_creep(const body_t& body, const std::string& name, const options_t& options) const {
 	return EM_ASM_INT({
-		let options;
+		var options;
 		if ($4 !== 0) {
 			options = { directions: [] };
 			do {
-				let direction = $4 & 0x0f;
+				var direction = $4 & 0x0f;
 				options.directions.push(direction);
 				$4 >>>= 4;
 			} while ($4 !== 0);
@@ -129,11 +129,11 @@ void spawn_t::spawning_t::cancel() const {
 
 void spawn_t::spawning_t::set_directions(directions_t directions) const {
 	EM_ASM({
-		let directions;
+		var directions;
 		if ($1 !== 0) {
 			directions = [];
 			do {
-				let direction = $1 & 0x0f;
+				var direction = $1 & 0x0f;
 				directions.push(direction);
 				$1 >>>= 4;
 			} while ($1 !== 0);

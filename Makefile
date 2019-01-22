@@ -27,8 +27,8 @@ $(BUILD_PATH)/emasm-bc-files.txt: $(EMASM_OBJS) | nothing
 
 # module
 GYP_PATH := $(BUILD_PATH)/gyp
-$(GYP_PATH)/binding.gyp: binding.gyp 	$(MAKEFILE_DEPS) | $$(@D)/.
-	sed -e 's/SOURCES/'$$(echo marker.cc $(addprefix ../../../,$(EMASM_SRCS)) | $(TO_JSON) | sed 's/\//\\\//g')'/' binding.gyp > $@
+$(GYP_PATH)/binding.gyp: binding.gyp.template $(MAKEFILE_DEPS) | $$(@D)/.
+	sed -e 's/SOURCES/'$$(echo marker.cc $(addprefix ../../../,$(EMASM_SRCS)) | $(TO_JSON) | sed 's/\//\\\//g')'/' binding.gyp.template > $@
 $(GYP_PATH)/marker.cc: $(BUILD_PATH)/module.a
 	touch $@
 $(GYP_PATH)/build/config.gypi: $(GYP_PATH)/binding.gyp
