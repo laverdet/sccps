@@ -1,5 +1,6 @@
 #pragma once
 #include "./constants.h"
+#include "./flag.h"
 #include "./object.h"
 #include "./iterator.h"
 #include "./position.h"
@@ -8,20 +9,6 @@
 #include "./internal/memory.h"
 
 namespace screeps {
-
-enum class color_t {
-	none,
-	blue,
-	brown,
-	cyan,
-	green,
-	grey,
-	orange,
-	purple,
-	red,
-	white,
-	yellow,
-};
 
 struct construction_site_t : public game_object_t {
 	bool my;
@@ -45,12 +32,6 @@ struct dropped_resource_t : public game_object_t {
 		game_object_t::serialize(memory);
 		memory & type & amount;
 	}
-};
-
-struct flag_t : public game_object_t {
-	string_t<kMaxFlagNameLength> name;
-	color_t color;
-	color_t secondary_color;
 };
 
 struct mineral_t : public game_object_t {

@@ -91,7 +91,6 @@ let droppedResourceAmount, droppedResourceType;
 
 // flag_t
 const [ colorEnum, colorEnumReverse ] = util.enumToMap([
-	undefined,
 	COLOR_BLUE,
 	COLOR_BROWN,
 	COLOR_CYAN,
@@ -102,7 +101,10 @@ const [ colorEnum, colorEnumReverse ] = util.enumToMap([
 	COLOR_RED,
 	COLOR_WHITE,
 	COLOR_YELLOW,
+	undefined,
 ]);
+let flagSizeof;
+let flagName, flagColor, flagSecondaryColor;
 
 // mineral_t
 let mineralSizeof;
@@ -182,6 +184,13 @@ const that = module.exports = {
 		creepBodyPartSizeof = layout.bodyPartSizeof;
 		creepBodyPartBoost = layout.bodyPartBoost;
 		creepBodyPartType = layout.bodyPartType;
+	},
+
+	initFlagLayout(layout) {
+		flagSizeof = layout.sizeof;
+		flagName = layout.name;
+		flagColor = layout.color;
+		flagSecondaryColor = layout.secondaryColor;
 	},
 
 	initDroppedResourceLayout(layout) {
@@ -273,7 +282,7 @@ const that = module.exports = {
 		// Ensure vector capacity
 		let constructionSites = Object.values(Game.constructionSites);
 		let flags = Object.values(Game.flags);
-		let rooms = Object.keys(Game.rooms);
+		let rooms = Object.values(Game.rooms);
 		let roomPointersLength = Math.max(env.readUint32(ptr + gameRooms), rooms.length);
 		let needsResize =
 			env.readUint32(ptr + gameConstructionSites) < constructionSites.length ||
@@ -290,7 +299,11 @@ const that = module.exports = {
 		constructionSites.sort(function(left, right) {
 			return PositionLib.parseRoomName(left.pos.roomName) - PositionLib.parseRoomName(right.pos.roomName);
 		});
+		flags.sort(function(left, right) {
+			return PositionLib.parseRoomName(left.pos.roomName) - PositionLib.parseRoomName(right.pos.roomName);
+		});
 		ArrayLib.writeData(env, env.readPtr(ptr + gameConstructionSites + env.ptrSize), constructionSiteSizeof, constructionSites, that.writeConstructionSite);
+		ArrayLib.writeData(env, env.readPtr(ptr + gameFlags + env.ptrSize), flagSizeof, flags, that.writeFlag);
 
 		// Write rooms
 		let roomPointers = env.readPtr(ptr + gameRooms + env.ptrSize);
@@ -301,11 +314,11 @@ const that = module.exports = {
 			roomPointers += env.ptrSize;
 		}
 		rooms.sort(function(left, right) {
-			return PositionLib.parseRoomName(left) - PositionLib.parseRoomName(right);
+			return PositionLib.parseRoomName(left.name) - PositionLib.parseRoomName(right.name);
 		});
-		for (let roomName of rooms) {
+		for (let room of rooms) {
 			// Find pointer to room structure
-			let roomId = PositionLib.parseRoomName(roomName);
+			let roomId = PositionLib.parseRoomName(room.name);
 			let roomPtr;
 			do {
 				if (roomPointers === roomPointersEnd) {
@@ -330,7 +343,7 @@ const that = module.exports = {
 					break;
 				}
 			} while (true);
-			that.writeRoom(env, roomPtr, roomId, Game.rooms[roomName]);
+			that.writeRoom(env, roomPtr, roomId, room);
 		}
 	},
 
@@ -431,6 +444,13 @@ const that = module.exports = {
 		env.writeInt32(ptr + droppedResourceType, resourceEnum.get(droppedResource.resourceType));
 	},
 
+	writeFlag(env, ptr, flag) {
+		that.writeRoomObject(env, ptr, flag.pos);
+		StringLib.writeOneByteString(env, ptr + flagName, flag.name);
+		env.writeInt32(ptr + flagColor, flag.color);
+		env.writeInt32(ptr + flagSecondaryColor, flag.secondaryColor);
+	},
+
 	writeMineral(env, ptr, mineral) {
 		that.writeGameObject(env, ptr, mineral);
 		env.writeInt32(ptr + mineralType, resourceEnum.get(mineral.mineralType));
@@ -512,6 +532,10 @@ const that = module.exports = {
 				}
 				break;
 		}
+	},
+
+	readColor(color) {
+		return colorEnumReverse.get(color);
 	},
 
 	readCreepBodyPart(bodyPart) {

@@ -120,6 +120,7 @@ void game_state_t::init_layout() {
 		offsetof(game_state_t, time)
 	);
 	creep_t::init();
+	flag_t::init();
 	room_t::init();
 	structure_t::init();
 }

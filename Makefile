@@ -4,7 +4,7 @@ include make/globals.mk
 include make/patterns.mk
 
 # Screeps C++ sources and object files
-SRCS := cpu.cc creep.cc game.cc handle.cc memory.cc path-finder.cc position.cc resource.cc room.cc structure.cc terrain.cc visual.cc
+SRCS := cpu.cc creep.cc game.cc handle.cc flag.cc memory.cc path-finder.cc position.cc resource.cc room.cc structure.cc terrain.cc visual.cc
 COMMON_SRCS := $(addprefix src/common/,$(SRCS))
 EMASM_SRCS := $(COMMON_SRCS) $(addprefix src/emasm/,$(SRCS))
 EMASM_OBJS := $(addprefix $(BUILD_PATH)/,$(patsubst %.cc,%.bc,$(EMASM_SRCS)))

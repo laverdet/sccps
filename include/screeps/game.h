@@ -2,6 +2,7 @@
 #include "./array.h"
 #include "./constants.h"
 #include "./creep.h"
+#include "./flag.h"
 #include "./object.h"
 #include "./position.h"
 #include "./room.h"
@@ -30,7 +31,7 @@ class game_state_t {
 				std::unordered_map<Identifier, Type*> index;
 				bool did_index = false;
 
-				Type* find_in_map(const Identifier& id) {
+				Type* find_in_map(const Identifier& id) const {
 					auto ii = index.find(id);
 					if (ii == index.end()) {
 						return nullptr;
@@ -65,11 +66,6 @@ class game_state_t {
 					ensure_index(vector);
 					return this->find_in_map(id);
 				}
-
-				template <class Vector>
-				const Type* find(Vector& vector, const Identifier& id) const {
-					return const_cast<vector_index_t*>(this)->find(vector, id);
-				}
 		};
 
 		template <class Identifier, class Base, class Type, Identifier Base::*Property, auto room_t::*Vector>
@@ -93,11 +89,6 @@ class game_state_t {
 					ensure_index(rooms);
 					return this->find_in_map(id);
 				}
-
-				template <class Rooms>
-				const Type* find(Rooms& rooms, const Identifier& id) const {
-					return const_cast<room_index_t*>(this)->find(rooms, id);
-				}
 		};
 
 		// Room pointers for JS
@@ -111,13 +102,14 @@ class game_state_t {
 		internal::memory_range_t<flag_t> flags_memory;
 
 		// Indices for `_by_id` functions
-		vector_index_t<sid_t, game_object_t, construction_site_t, &construction_site_t::id> construction_sites_by_id;
-		room_index_t<sid_t, game_object_t, creep_t, &creep_t::id, &room_t::creeps> creeps_by_id;
-		room_index_t<creep_t::name_t, creep_t, creep_t, &creep_t::name, &room_t::creeps> creeps_by_name;
-		room_index_t<sid_t, game_object_t, dropped_resource_t, &dropped_resource_t::id, &room_t::dropped_resources> dropped_resources_by_id;
-		room_index_t<sid_t, game_object_t, source_t, &source_t::id, &room_t::sources> sources_by_id;
-		room_index_t<sid_t, game_object_t, structure_union_t, &structure_t::id, &room_t::structures> structures_by_id;
-		room_index_t<sid_t, game_object_t, tombstone_t, &tombstone_t::id, &room_t::tombstones> tombstones_by_id;
+		mutable vector_index_t<sid_t, game_object_t, construction_site_t, &construction_site_t::id> construction_sites_by_id;
+		mutable room_index_t<sid_t, game_object_t, creep_t, &creep_t::id, &room_t::creeps> creeps_by_id;
+		mutable room_index_t<creep_t::name_t, creep_t, creep_t, &creep_t::name, &room_t::creeps> creeps_by_name;
+		mutable room_index_t<sid_t, game_object_t, dropped_resource_t, &dropped_resource_t::id, &room_t::dropped_resources> dropped_resources_by_id;
+		mutable vector_index_t<flag_t::name_t, flag_t, flag_t, &flag_t::name> flags_by_name;
+		mutable room_index_t<sid_t, game_object_t, source_t, &source_t::id, &room_t::sources> sources_by_id;
+		mutable room_index_t<sid_t, game_object_t, structure_union_t, &structure_t::id, &room_t::structures> structures_by_id;
+		mutable room_index_t<sid_t, game_object_t, tombstone_t, &tombstone_t::id, &room_t::tombstones> tombstones_by_id;
 
 	public:
 		int32_t gcl;
@@ -135,6 +127,8 @@ class game_state_t {
 	private:
 		void clear_indices();
 		void update_pointers();
+		template <auto Property, class Container>
+		void update_pointer_container(Container& container);
 		void write_room_pointers();
 
 	public:
@@ -190,6 +184,13 @@ class game_state_t {
 		}
 		const dropped_resource_t* dropped_resource_by_id(const sid_t& id) const {
 			return dropped_resources_by_id.find(rooms, id);
+		}
+
+		flag_t* flag_by_name(const flag_t::name_t& name) {
+			return flags_by_name.find(flags, name);
+		}
+		const flag_t* flag_by_name(const flag_t::name_t& name) const {
+			return flags_by_name.find(flags, name);
 		}
 
 		source_t* source_by_id(const sid_t& id) {
