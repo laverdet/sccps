@@ -1,8 +1,10 @@
 #pragma once
+#include "./constants.h"
 #include "./iterator.h"
 #include <array>
 #include <iosfwd>
 #include <limits>
+#include <string_view>
 #include <unordered_map>
 
 namespace screeps {
@@ -389,7 +391,42 @@ struct coord_base_t {
 struct room_location_t : coord_base_t<room_location_t> {
 	using coord_base_t::coord_base_t;
 
+	room_location_t(std::string_view room_name) { // NOLINT(hicpp-explicit-conversions)
+		if (room_name == "sim") {
+			id = 0;
+		} else {
+			const char* vertical_pos = atoi(room_name.begin() + 1, room_name.end(), xx);
+			atoi(vertical_pos + 1, room_name.end(), yy);
+			if (room_name.front() == 'W') {
+				xx = -xx - 1;
+			}
+			if (*vertical_pos == 'N') {
+				yy = -yy - 1;
+			}
+			xx += k_world_size2;
+			yy += k_world_size2;
+		}
+	}
+
+	// Needed to avoid room_location_t(0) using the char* ctor
+	room_location_t(int id) : coord_base_t(id) {}
+	room_location_t(const char* room_name) : room_location_t(std::string_view(room_name)) {}
+
 	constexpr struct position_t operator[](struct local_position_t pos) const;
+
+	static constexpr const char* atoi(const char* begin, const char* end, int16_t& result) {
+		result = 0;
+		while (begin != end) {
+			int digit = *begin - '0';
+			if (digit >= 0 && digit <= 9) {
+				result = result * 10 + digit;
+				++begin;
+			} else {
+				break;
+			}
+		}
+		return begin;
+	}
 
 	const class terrain_t& terrain(class terrain_t* terrain = nullptr) const;
 	friend std::ostream& operator<<(std::ostream& os, room_location_t that);
