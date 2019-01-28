@@ -25,6 +25,10 @@ struct string_t : array_t<char, Capacity> {
 		return std::string(this->data(), this->size());
 	}
 
+	explicit operator std::string_view() const {
+		return {this->data(), this->size()};
+	}
+
 	bool operator==(const string_t& that) const {
 		if (this->size() != that.size()) {
 			return false;
