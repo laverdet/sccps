@@ -518,7 +518,7 @@ const that = module.exports = {
 					let bits = 0;
 					if (structure.spawning.directions !== undefined) {
 						let directions = structure.spawning.directions;
-						for (let ii = directions.length - 1; ii <= 0; --ii) {
+						for (let ii = directions.length - 1; ii >= 0; --ii) {
 							bits <<= 4;
 							bits |= directions[ii];
 						}
