@@ -164,7 +164,7 @@ struct spawn_t : structure_t, energy_store_t {
 		directions_t directions;
 		int need_time;
 		int remaining_time;
-		creep_t::name_t name;
+		sid_t id;
 
 		void cancel() const;
 		void set_directions(directions_t directions) const;

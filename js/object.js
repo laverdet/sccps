@@ -81,8 +81,9 @@ const [ bodyPartEnum, bodyPartEnumReverse ] = util.enumToMap([
 	TOUGH,
 	WORK,
 ]);
+let creepPtr; // hack to write spawning creeps
 let creepSizeof;
-let creepBody, creepCarry, creepFatigue, creepHits, creepHitsMax, creepMy, creepName, creepSpawning, creepTicksToLive;
+let creepBody, creepCarry, creepFatigue, creepHits, creepHitsMax, creepMy, creepName, creepIsSpawning, creepSpawnId, creepTicksToLive;
 let creepBodyPartSizeof, creepBodyPartBoost, creepBodyPartType;
 
 // dropped_resource_t
@@ -150,7 +151,7 @@ let structureControllerLevel, structureControllerProgress, structureControllerPr
 let structureExtensionEnergy, structureExtensionEnergyCapacity;
 let structureRoadTicksToDecay;
 let structureSpawnEnergy, structureSpawnEnergyCapacity;
-let structureSpawning, structureSpawningDirections, structureSpawningNeedTime, structureSpawningRemainingTime, structureSpawningName;
+let structureSpawning, structureSpawningDirections, structureSpawningNeedTime, structureSpawningRemainingTime, structureSpawningId;
 
 const that = module.exports = {
 	initGameLayout(layout) {
@@ -179,7 +180,8 @@ const that = module.exports = {
 		creepHitsMax = layout.hitsMax;
 		creepMy = layout.my;
 		creepName = layout.name;
-		creepSpawning = layout.spawning;
+		creepIsSpawning = layout.isSpawning;
+		creepSpawnId = layout.spawnId;
 		creepTicksToLive = layout.ticksToLive;
 		creepBodyPartSizeof = layout.bodyPartSizeof;
 		creepBodyPartBoost = layout.bodyPartBoost;
@@ -270,7 +272,7 @@ const that = module.exports = {
 		structureSpawningDirections = layout.spawningDirections;
 		structureSpawningNeedTime = layout.spawningNeedTime;
 		structureSpawningRemainingTime = layout.spawningRemainingTime;
-		structureSpawningName = layout.spawningName;
+		structureSpawningId = layout.spawningId;
 	},
 
 	writeGame(env, ptr) {
@@ -355,21 +357,15 @@ const that = module.exports = {
 
 		// Ensure vector capacity
 		let creeps = room.find(FIND_CREEPS);
-		for (let spawn of room.find(FIND_MY_SPAWNS)) {
-			let spawning = spawn.spawning;
-			if (spawning) {
-				creeps.push(Game.creeps[spawning.name]);
-			}
-		}
 		let droppedResources = room.find(FIND_DROPPED_RESOURCES);
 		let sources = room.find(FIND_SOURCES);
 		let structures = room.find(FIND_STRUCTURES);
 		let needsResize =
-			env.readUint32(ptr + roomCreeps) < creeps.length ||
+			env.readUint32(ptr + roomCreeps) < creeps.length + 3 ||
 			env.readUint32(ptr + roomDroppedResources) < droppedResources.length ||
 			env.readUint32(ptr + roomSources) < sources.length ||
 			env.readUint32(ptr + roomStructures) < structures.length;
-		env.writeUint32(ptr + roomCreeps, creeps.length);
+		env.writeUint32(ptr + roomCreeps, creeps.length + 3);
 		env.writeUint32(ptr + roomDroppedResources, droppedResources.length);
 		env.writeUint32(ptr + roomSources, sources.length);
 		env.writeUint32(ptr + roomStructures, structures.length);
@@ -378,10 +374,15 @@ const that = module.exports = {
 		}
 
 		// Write structures
-		ArrayLib.writeData(env, env.readPtr(ptr + roomCreeps + env.ptrSize), creepSizeof, creeps, that.writeCreep);
+		let creepsData = env.readPtr(ptr + roomCreeps + env.ptrSize);
+		creepPtr = creepsData + creepSizeof * creeps.length;
+		ArrayLib.writeData(env, creepsData, creepSizeof, creeps, that.writeCreep);
 		ArrayLib.writeData(env, env.readPtr(ptr + roomDroppedResources + env.ptrSize), droppedResourceSizeof, droppedResources, that.writeDroppedResource);
 		ArrayLib.writeData(env, env.readPtr(ptr + roomSources + env.ptrSize), sourceSizeof, sources, that.writeSource);
 		ArrayLib.writeData(env, env.readPtr(ptr + roomStructures + env.ptrSize), structureSizeof, structures, that.writeStructure);
+
+		// Update creeps length now that we've searched all spawns for extra creeps
+		env.writeUint32(ptr + roomCreeps, creeps.length + (creepPtr - creepsData) / creepSizeof);
 
 		// Write mineral
 		let minerals = room.find(FIND_MINERALS);
@@ -434,7 +435,7 @@ const that = module.exports = {
 		} else {
 			env.writeInt32(ptr + creepName, 0);
 		}
-		env.writeInt8(ptr + creepSpawning, creep.spawning ? 1 : 0);
+		env.writeInt8(ptr + creepIsSpawning, creep.spawning ? 1 : 0);
 		env.writeInt32(ptr + creepTicksToLive, creep.ticksToLive);
 	},
 
@@ -525,8 +526,13 @@ const that = module.exports = {
 					env.writeInt32(ptr + structureSpawningDirections, bits);
 					env.writeInt32(ptr + structureSpawningNeedTime, structure.spawning.needTime);
 					env.writeInt32(ptr + structureSpawningRemainingTime, structure.spawning.remainingTime);
-					StringLib.writeOneByteString(env, ptr + structureSpawningName, structure.spawning.name);
+					let creep = Game.creeps[structure.spawning.name];
+					StringLib.writeOneByteString(env, ptr + structureSpawningId, creep.id);
 					env.writeInt8(ptr + structureSpawning, 1);
+					// The spawn is responsible for writing creep data because these creeps don't show up in Game.creeps
+					that.writeCreep(env, creepPtr, creep);
+					StringLib.writeOneByteString(env, creepPtr + creepSpawnId, structure.id);
+					creepPtr += creepSizeof;
 				} else {
 					env.writeInt8(ptr + structureSpawning, 0);
 				}

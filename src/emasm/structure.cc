@@ -75,7 +75,7 @@ void structure_t::init() {
 			'spawningDirections': $3,
 			'spawningNeedTime': $4,
 			'spawningRemainingTime': $5,
-			'spawningName': $6,
+			'spawningId': $6,
 		});
 	},
 		offsetof(spawn_t, energy),
@@ -84,7 +84,7 @@ void structure_t::init() {
 		offsetof(spawn_t, spawning) + offsetof(spawn_t::spawning_t, directions),
 		offsetof(spawn_t, spawning) + offsetof(spawn_t::spawning_t, need_time),
 		offsetof(spawn_t, spawning) + offsetof(spawn_t::spawning_t, remaining_time),
-		offsetof(spawn_t, spawning) + offsetof(spawn_t::spawning_t, name)
+		offsetof(spawn_t, spawning) + offsetof(spawn_t::spawning_t, id)
 	);
 }
 

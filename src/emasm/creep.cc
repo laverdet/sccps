@@ -92,11 +92,12 @@ void creep_t::init() {
 			'hitsMax': $5,
 			'my': $6,
 			'name': $7,
-			'spawning': $8,
-			'ticksToLive': $9,
-			'bodyPartSizeof': $10,
-			'bodyPartBoost': $11,
-			'bodyPartType': $12
+			'spawnId': $8,
+			'isSpawning': $9,
+			'ticksToLive': $10,
+			'bodyPartSizeof': $11,
+			'bodyPartBoost': $12,
+			'bodyPartType': $13
 		});
 	},
 		sizeof(creep_t),
@@ -107,7 +108,8 @@ void creep_t::init() {
 		offsetof(creep_t, hits_max),
 		offsetof(creep_t, my),
 		offsetof(creep_t, name),
-		offsetof(creep_t, spawning),
+		offsetof(creep_t, _spawn_id),
+		offsetof(creep_t, _is_spawning),
 		offsetof(creep_t, ticks_to_live),
 		sizeof(creep_bodypart_t),
 		offsetof(creep_bodypart_t, boost),

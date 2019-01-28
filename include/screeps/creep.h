@@ -4,7 +4,9 @@
 #include "./position.h"
 #include "./object.h"
 #include "./resource.h"
+#include "./memory/optional.h"
 #include <iosfwd>
+#include <optional>
 #include <vector>
 
 namespace screeps {
@@ -52,7 +54,13 @@ struct creep_t : game_object_t {
 	array_t<creep_bodypart_t, kMaxCreepSize> body;
 	// owner
 	// saying
-	bool spawning;
+	union {
+		struct {
+			sid_t _spawn_id;
+			bool _is_spawning;
+		};
+		std::optional<sid_t> spawning;
+	};
 	bool my;
 
 	struct static_method {
@@ -68,6 +76,8 @@ struct creep_t : game_object_t {
 		static int upgrade_controller(const sid_t& creep, const sid_t& target);
 		static int withdraw(const sid_t& creep, const sid_t& target, resource_t resource, int amount = -1);
 	};
+
+	creep_t() {};
 
 	int build(const game_object_t& target) const {
 		return static_method::build(id, target.id);
