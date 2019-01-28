@@ -30,9 +30,12 @@ void game_state_t::update_pointer_container(Container& container) {
 			current_location = location;
 		}
 		if (&object == &container.back() || location != current_location) {
-			auto& [location, room] = *rooms.find(object.pos.room_location());
-			room.*Property = {current, &object + 1};
-			current = nullptr;
+			auto ii = rooms.find(object.pos.room_location());
+			if (ii != rooms.end()) {
+				auto& [location, room] = *ii;
+				room.*Property = {current, &object + 1};
+				current = nullptr;
+			}
 		}
 	}
 }
