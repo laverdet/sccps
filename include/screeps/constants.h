@@ -16,6 +16,10 @@ constexpr int k_world_size2 = k_world_size >> 1;
 constexpr int k_build_range = 3;
 constexpr int k_repair_range = 3;
 constexpr int k_upgrade_controller_range = 3;
+constexpr int k_memory_size = 2 << 20; // 2MB
+constexpr int k_memory_segment_count = 100;
+constexpr int k_memory_segment_size = 100 << 10; // 1KB
+constexpr int k_memory_max_active_segments = 10;
 
 // Error codes
 constexpr int k_ok = 0;

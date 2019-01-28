@@ -12,6 +12,7 @@ void game_state_t::clear_indices() {
 	sources_by_id.clear();
 	structures_by_id.clear();
 	tombstones_by_id.clear();
+	memory.reset();
 }
 
 void game_state_t::update_pointers() {

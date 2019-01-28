@@ -10,6 +10,7 @@
 #include "./terrain.h"
 #include "./memory/unordered_map.h"
 #include "./memory/vector.h"
+#include "./memory.h"
 #include "./internal/memory.h"
 #include <cstdint>
 #include <unordered_map>
@@ -119,6 +120,8 @@ class game_state_t {
 
 		container_t<construction_site_t> construction_sites;
 		container_t<flag_t> flags;
+
+		raw_memory_t memory;
 
 	public:
 		static void init_layout();

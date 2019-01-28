@@ -107,14 +107,16 @@ void game_state_t::init_layout() {
 			'constructionSites': $0,
 			'flags': $1,
 			'rooms': $2,
+			'memory': $3,
 
-			'gcl': $3,
-			'time': $4,
+			'gcl': $4,
+			'time': $5,
 		});
 	},
 		offsetof(game_state_t, construction_sites_memory),
 		offsetof(game_state_t, flags_memory),
 		offsetof(game_state_t, room_pointers_memory),
+		offsetof(game_state_t, memory),
 
 		offsetof(game_state_t, gcl),
 		offsetof(game_state_t, time)

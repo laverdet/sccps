@@ -6,7 +6,7 @@ const util = require('util');
 const kWorldSize = 255;
 
 // game_state_t
-let gameConstructionSites, gameFlags, gameRooms;
+let gameConstructionSites, gameFlags, gameRooms, gameMemory;
 let gameGcl, gameTime;
 
 // resource_store_t
@@ -156,8 +156,9 @@ let structureSpawning, structureSpawningDirections, structureSpawningNeedTime, s
 const that = module.exports = {
 	initGameLayout(layout) {
 		gameConstructionSites = layout.constructionSites;
-		gameRooms = layout.rooms;
 		gameFlags = layout.flags;
+		gameRooms = layout.rooms;
+		gameMemory = layout.memory;
 
 		gameGcl = layout.gcl;
 		gameTime = layout.time;
@@ -347,6 +348,16 @@ const that = module.exports = {
 			} while (true);
 			that.writeRoom(env, roomPtr, roomId, room);
 		}
+
+		// Write active segments
+		let memoryPointer = ptr + gameMemory;
+		let segmentCount = 0;
+		for (let segment in RawMemory.segments) {
+			memoryPointer += 4;
+			++segmentCount;
+			env.writeUint32(memoryPointer, Number(segment));
+		}
+		env.writeUint32(ptr + gameMemory, segmentCount);
 	},
 
 	writeRoom(env, ptr, roomId, room) {

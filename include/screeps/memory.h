@@ -1,5 +1,7 @@
 #pragma once
 #include "./memory/utility.h"
+#include <screeps/constants.h>
+#include <bitset>
 #include <cstdint>
 #include <stdexcept>
 #include <string_view>
@@ -77,26 +79,16 @@ typename std::enable_if<std::is_same<decltype(std::declval<Type>().write(std::de
 } // namespace serialization
 
 namespace screeps {
+class raw_memory_t;
 
+// Base class for memory access, shouldn't be used directly
 class memory_t {
-	protected:
-		static constexpr int k_internal_version = 1;
-		static constexpr int k_magic = 0xd0414102;
-		std::vector<uint8_t> memory;
-		uint8_t* pos;
-		uint8_t* end;
-		int internal_version = 0;
-		int _version = 0;
-
+	friend raw_memory_t;
 	public:
 		explicit memory_t(size_t bytes) : memory(bytes), pos(memory.data()) {}
 
-		explicit operator std::string_view() const {
-			return {reinterpret_cast<const char*>(memory.data()), static_cast<size_t>(pos - memory.data())};
-		}
-
-		int version() const {
-			return _version;
+		size_t capacity() const {
+			return memory.size();
 		}
 
 		uint8_t* data() {
@@ -104,33 +96,27 @@ class memory_t {
 		}
 
 		size_t size() const {
-			return memory.size();
+			return end - pos;
 		}
 
-		// TODO: Read/write data to screeps RawMemory
-		bool load();
-		void save() const;
+		int version() const {
+			return _version;
+		}
+
+	protected:
+		static constexpr int32_t k_internal_version = 1;
+		static constexpr int32_t k_magic = 0x8af88ecd;
+		std::vector<uint8_t> memory;
+		uint8_t* pos;
+		uint8_t* end;
+		int32_t internal_version = 0;
+		int32_t _version = 0;
 };
 
-class memory_reader_t: public memory_t {
-	private:
-		// Convenience reader for emplace
-		struct reader_t {
-			memory_reader_t& reader;
-			explicit reader_t(memory_reader_t& reader) : reader(reader) {}
-			
-			template <class Type>
-			operator Type() { // NOLINT(hicpp-explicit-conversions)
-				Type value;
-				reader >>value;
-				return value;
-			}
-		};
-
+class memory_reader_t : public memory_t {
 	public:
 		using memory_t::memory_t;
-		static constexpr bool is_reader = true;
-		static constexpr bool is_writer = false;
+		explicit operator std::string_view() const { return {reinterpret_cast<const char*>(memory.data()), size()}; }
 
 		// Read raw memory
 		void copy(uint8_t* ptr, size_t size) {
@@ -157,28 +143,51 @@ class memory_reader_t: public memory_t {
 			return reader_t(*this);
 		}
 
-		// Convert a memory_t instance to a reader
-		static auto& reset(memory_t& memory) {
-			auto& that = *static_cast<memory_reader_t*>(&memory);
-			that.pos = that.memory.data();
-			that.end = that.memory.data() + that.memory.size();
-			int magic;
-			that >>magic >>that.internal_version >>that._version;
-			if (magic != k_magic || that.internal_version == 0) {
-				that.end = that.pos;
+		bool reset(size_t size) {
+			// Confirm validity and setup pointers
+			if (size < 16) {
+				return false;
 			}
-			return that;
+			pos = data();
+			end = pos + size;
+			int32_t magic;
+			uint32_t payload_size;
+			*this >>magic >>payload_size >>internal_version >>_version;
+			if (magic != memory_t::k_magic || payload_size > size || internal_version != 1) {
+				return false;
+			}
+			end = data() + payload_size;
+			return true;
 		}
+
+		static constexpr bool is_reader = true;
+		static constexpr bool is_writer = false;
+
+	private:
+		// Convenience reader for emplace
+		struct reader_t {
+			memory_reader_t& reader;
+			explicit reader_t(memory_reader_t& reader) : reader(reader) {}
+
+			template <class Type>
+			operator Type() { // NOLINT(hicpp-explicit-conversions)
+				Type value;
+				reader >>value;
+				return value;
+			}
+		};
 };
 
 class memory_writer_t: public memory_t {
+	friend raw_memory_t;
 	public:
-		using memory_t::memory_t;
-		static constexpr bool is_reader = false;
-		static constexpr bool is_writer = true;
-
 		memory_writer_t(size_t bytes, int version) : memory_t(bytes) {
-			reset(*this, version);
+			reset(version);
+		}
+
+		explicit operator std::string_view() {
+			*(reinterpret_cast<uint32_t*>(data()) + 1) = end - pos;
+			return {reinterpret_cast<const char*>(memory.data()), size()};
 		}
 
 		// Write raw memory
@@ -203,16 +212,52 @@ class memory_writer_t: public memory_t {
 			return *this <<std::forward<Type>(value);
 		}
 
-		// Convert a memory_t instance to a write
-		static memory_writer_t& reset(memory_t& memory, int version) {
-			auto& that = *static_cast<memory_writer_t*>(&memory);
-			that.pos = that.memory.data();
-			that.end = that.memory.data() + that.memory.size();
-			that <<k_magic <<k_internal_version <<version;
-			that.internal_version = k_internal_version;
-			that._version = version;
-			return that;
+		// Reset this writer
+		void reset(int version) {
+			pos = data();
+			end = pos + capacity();
+			*this <<k_magic <<(uint32_t)0 <<k_internal_version <<(int32_t)version;
 		}
+
+		static constexpr bool is_reader = false;
+		static constexpr bool is_writer = true;
+};
+
+class raw_memory_t {
+	friend class game_state_t;
+	private:
+		struct segments_t {
+			friend raw_memory_t;
+			public:
+				const int32_t* begin() const {
+					return &active_segments[0];
+				}
+				const int32_t* end() const {
+					return &active_segments[active_segment_count + 1];
+				}
+				size_t size() const {
+					return active_segment_count;
+				}
+
+			private:
+				int32_t active_segment_count = 0;
+				int32_t active_segments[k_memory_max_active_segments];
+		};
+
+	public:
+		bool load(memory_reader_t& reader, int segment = -1) const;
+		bool save(memory_writer_t& writer, int segment = -1) const;
+		void set_active_segments(const int* begin, const int* end) const;
+		segments_t segments;
+
+		void reset() {
+			segments.active_segment_count = 0;
+			count_saved = 0;
+			saved_segments.reset();
+		}
+
+		mutable int count_saved = 0;
+		mutable std::bitset<k_memory_segment_count> saved_segments;
 };
 
 } // namespace screeps
