@@ -5,15 +5,6 @@
 
 namespace screeps {
 
-const terrain_t& room_location_t::terrain(terrain_t* terrain) const {
-	static terrain_t* terrain_map[256 * 256]{nullptr};
-	int id = xx * 256 + yy;
-	if (terrain_map[id] == nullptr) {
-		terrain_map[id] = terrain == nullptr ? new terrain_t(*this) : terrain;
-	}
-	return *terrain_map[id];
-}
-
 std::ostream& operator<<(std::ostream& os, direction_t dir) {
 	os <<"direction_t::";
 	switch (dir) {

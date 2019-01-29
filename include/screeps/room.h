@@ -146,10 +146,6 @@ class room_t {
 
 		int create_construction_site(position_t pos, structure_t::type_t structure_type, const std::string& name = "") const;
 		int create_construction_site(local_position_t pos, structure_t::type_t structure_type, const std::string& name = "") const;
-
-		const terrain_t& terrain() const {
-			return location.terrain();
-		}
 };
 
 } // namespace screeps

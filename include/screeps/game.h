@@ -144,12 +144,13 @@ class game_state_t {
 			// Super hacky terrain storage
 			for (auto& [location, room] : rooms) {
 				if constexpr (Memory::is_reader) {
-					auto terrain = new terrain_t();
+					auto terrain = std::make_shared<terrain_t>();
 					room_location_t location;
 					memory & location & *terrain;
-					location.terrain(terrain);
+					terrain_t::insert(location, std::move(terrain));
 				} else {
-					memory & location & location.terrain();
+					auto terrain = terrain_t::load(location);
+					memory & location & *terrain;
 				}
 				update_pointers();
 			}

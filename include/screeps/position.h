@@ -428,7 +428,6 @@ struct room_location_t : coord_base_t<room_location_t> {
 		return begin;
 	}
 
-	const class terrain_t& terrain(class terrain_t* terrain = nullptr) const;
 	friend std::ostream& operator<<(std::ostream& os, room_location_t that);
 };
 

@@ -1,7 +1,48 @@
-#include <screeps/terrain.h>
 #include "./javascript.h"
+#include <screeps/terrain.h>
+#include <memory>
+#include <unordered_map>
 
 namespace screeps {
+
+namespace {
+	static std::unordered_map<room_location_t, std::weak_ptr<terrain_t>> weak_terrain;
+	static std::unordered_map<room_location_t, std::shared_ptr<terrain_t>> stored_terrain;
+
+	class public_terrain_t : public terrain_t {
+		public:
+			public_terrain_t(room_location_t room) : terrain_t(room) {}
+	};
+}
+
+void terrain_t::flush() {
+	stored_terrain.clear();
+	for (auto ii = weak_terrain.begin(); ii != weak_terrain.end(); ) {
+		if (ii->second.lock()) {
+			++ii;
+		} else {
+			ii = weak_terrain.erase(ii);
+		}
+	}
+}
+
+std::shared_ptr<terrain_t> terrain_t::load(room_location_t room) {
+	auto ii = weak_terrain.find(room);
+	if (ii != weak_terrain.end()) {
+		auto ptr = ii->second.lock();
+		if (ptr) {
+			return ptr;
+		} else {
+			ptr = std::make_shared<public_terrain_t>(room);
+			ii->second = ptr;
+			return ptr;
+		}
+	}
+	auto ptr = std::make_shared<public_terrain_t>(room);
+	stored_terrain.emplace(room, ptr);
+	weak_terrain.emplace(room, ptr);
+	return ptr;
+}
 
 terrain_t::terrain_t(room_location_t room) {
 	EM_ASM({
@@ -30,6 +71,12 @@ terrain_t::terrain_t(room_location_t room) {
 			}
 		}
 	}, room.id, this);
+}
+
+void terrain_t::insert(room_location_t room, std::shared_ptr<terrain_t> terrain) {
+	static std::unordered_map<room_location_t, std::shared_ptr<terrain_t>> eternal_terrain;
+	weak_terrain.emplace(room, terrain);
+	eternal_terrain.emplace(room, std::move(terrain));
 }
 
 } // namespace screeps
