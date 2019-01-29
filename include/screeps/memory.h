@@ -201,8 +201,8 @@ class memory_writer_t: public memory_t {
 		}
 
 		explicit operator std::string_view() {
-			*(reinterpret_cast<uint32_t*>(data()) + 1) = end - pos;
-			return {reinterpret_cast<const char*>(memory.data()), size()};
+			*(reinterpret_cast<uint32_t*>(data()) + 1) = pos - data();
+			return {reinterpret_cast<const char*>(data()), static_cast<size_t>(pos - data())};
 		}
 
 		// Write raw memory
