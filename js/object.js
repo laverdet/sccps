@@ -410,8 +410,8 @@ const that = module.exports = {
 
 	writeRoomObject(env, ptr, pos) {
 		let room = PositionLib.parseRoomName(pos.roomName);
-		env.writeUint16(ptr + 0, pos.x + (room >> 16) * 50);
-		env.writeUint16(ptr + 2, pos.y + (room & 0xff) * 50);
+		env.writeUint16(ptr + 0, pos.x + (room & 0xff) * 50);
+		env.writeUint16(ptr + 2, pos.y + (room >> 16) * 50);
 	},
 
 	writeGameObject(env, ptr, obj) {
@@ -459,8 +459,8 @@ const that = module.exports = {
 	writeFlag(env, ptr, flag) {
 		that.writeRoomObject(env, ptr, flag.pos);
 		StringLib.writeOneByteString(env, ptr + flagName, flag.name);
-		env.writeInt32(ptr + flagColor, flag.color);
-		env.writeInt32(ptr + flagSecondaryColor, flag.secondaryColor);
+		env.writeInt32(ptr + flagColor, colorEnum.get(flag.color));
+		env.writeInt32(ptr + flagSecondaryColor, colorEnum.get(flag.secondaryColor));
 	},
 
 	writeMineral(env, ptr, mineral) {

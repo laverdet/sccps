@@ -49,7 +49,7 @@ const that = module.exports = {
 			if (verticalDir === 'N') {
 				ry = -ry - 1;
 			}
-			return ((rx + kWorldSize2) << 16) | (ry + kWorldSize2);
+			return ((ry + kWorldSize2) << 16) | (rx + kWorldSize2);
 		}
 	},
 
