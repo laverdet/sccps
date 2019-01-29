@@ -29,51 +29,66 @@ typename std::enable_if<std::is_arithmetic<typename std::remove_reference<Number
 }
 */
 
-template <class Memory, typename Number>
-void read(Memory& memory, Number& number, typename serialize_number_t<typename std::decay<Number>::type>::as /* sfinae */ = 0) {
-	typename serialize_number_t<typename std::decay<Number>::type>::as tmp;
+template <class Memory, class Number>
+void read(Memory& memory, Number& number, typename serialize_number_t<std::decay_t<Number>>::as /* sfinae */ = 0) {
+	typename serialize_number_t<std::decay_t<Number>>::as tmp;
 	memory.copy(reinterpret_cast<uint8_t*>(&tmp), sizeof(tmp));
 	number = tmp;
 }
 
-template <class Memory, typename Number>
-void write(Memory& memory, Number number, typename serialize_number_t<typename std::decay<Number>::type>::as /* sfinae */ = 0) {
-	typename serialize_number_t<typename std::decay<Number>::type>::as tmp = number;
+template <class Memory, class Number>
+void write(Memory& memory, Number number, typename serialize_number_t<std::decay_t<Number>>::as /* sfinae */ = 0) {
+	typename serialize_number_t<std::decay_t<Number>>::as tmp = number;
 	memory.copy(reinterpret_cast<const uint8_t*>(&tmp), sizeof(tmp));
 }
 
 // enums
-template <class Memory, typename Enum>
-typename std::enable_if<std::is_enum<typename std::remove_reference<Enum>::type>::value>::type serialize(Memory& memory, Enum&& value) {
+template <class Memory, class Enum>
+std::enable_if_t<std::is_enum_v<std::remove_reference_t<Enum>>> serialize(Memory& memory, Enum&& value) {
 	memory.copy(reinterpret_cast<uint8_t*>(&value), sizeof(Enum));
 }
 
 // Invoke `serialize` as an instance method on any type
 template <class Memory, class Type>
-typename std::enable_if<std::is_same<decltype(std::declval<Type>().serialize(std::declval<Memory&>())), void>::value>::type serialize(Memory& memory, Type&& value) {
+std::enable_if_t<std::is_same_v<decltype(std::declval<Type>().serialize(std::declval<Memory&>())), void>> serialize(Memory& memory, Type&& value) {
 	std::forward<Type>(value).serialize(memory);
 }
 
 // Invoke `serialize` when `read`/`write` are called
 template <class Memory, class Type>
-typename std::enable_if<std::is_same<decltype(serialize(std::declval<Memory&>(), std::declval<Type>())), void>::value>::type read(Memory& memory, Type&& value) {
+std::enable_if_t<std::is_same_v<decltype(serialize(std::declval<Memory&>(), std::declval<Type>())), void>> read(Memory& memory, Type&& value) {
 	serialization::serialize(memory, std::forward<Type>(value));
 }
 
 template <class Memory, class Type>
-typename std::enable_if<std::is_same<decltype(serialize(std::declval<Memory&>(), std::declval<Type>())), void>::value>::type write(Memory& memory, Type&& value) {
+std::enable_if_t<std::is_same_v<decltype(serialize(std::declval<Memory&>(), std::declval<Type>())), void>> write(Memory& memory, Type&& value) {
 	serialization::serialize(memory, std::forward<Type>(value));
 }
 
 // Invoke `read`/`write` as an instance method on any type
 template <class Memory, class Type>
-typename std::enable_if<std::is_same<decltype(std::declval<Type>().read(std::declval<Memory&>())), void>::value>::type read(Memory& memory, Type&& value) {
+std::enable_if_t<std::is_same_v<decltype(std::declval<Type>().read(std::declval<Memory&>())), void>> read(Memory& memory, Type&& value) {
 	std::forward<Type>(value).read(memory);
 }
 
 template <class Memory, class Type>
-typename std::enable_if<std::is_same<decltype(std::declval<Type>().write(std::declval<Memory&>())), void>::value>::type write(Memory& memory, Type&& value) {
+ std::enable_if_t<std::is_same_v<decltype(std::declval<Type>().write(std::declval<Memory&>())), void>> write(Memory& memory, Type&& value) {
 	std::forward<Type>(value).write(memory);
+}
+
+// Array types
+template <class Memory, class Type, size_t Count>
+void read(Memory& memory, Type (&value)[Count]) {
+	for (size_t ii = 0; ii < Count; ++ii) {
+		serialization::read(memory, value[ii]);
+	}
+}
+
+template <class Memory, class Type, size_t Count>
+void write(Memory& memory, Type (&value)[Count]) {
+	for (size_t ii = 0; ii < Count; ++ii) {
+		serialization::write(memory, value[ii]);
+	}
 }
 
 } // namespace serialization
@@ -104,7 +119,7 @@ class memory_t {
 		}
 
 	protected:
-		static constexpr int32_t k_internal_version = 1;
+		static constexpr int32_t k_internal_version = 2;
 		static constexpr int32_t k_magic = 0x8af88ecd;
 		std::vector<uint8_t> memory;
 		uint8_t* pos;
@@ -153,7 +168,7 @@ class memory_reader_t : public memory_t {
 			int32_t magic;
 			uint32_t payload_size;
 			*this >>magic >>payload_size >>internal_version >>_version;
-			if (magic != memory_t::k_magic || payload_size > size || internal_version != 1) {
+			if (magic != memory_t::k_magic || payload_size > size || internal_version != k_internal_version) {
 				return false;
 			}
 			end = data() + payload_size;

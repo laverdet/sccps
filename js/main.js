@@ -215,6 +215,7 @@ function* initialize() {
 
 			readInt32: addr => mod.HEAP32[addr >> 2],
 			writeInt32: (addr, val) => void(mod.HEAP32[addr >> 2] = val),
+			orInt32: (addr, val) => void(mod.HEAP32[addr >> 2] |= val),
 			readUint32: addr => mod.HEAPU32[addr >> 2],
 			writeUint32: (addr, val) => void(mod.HEAPU32[addr >> 2] = val),
 
@@ -266,6 +267,7 @@ function* initialize() {
 
 			readInt32: addr => mod.HEAP32[addr / 4],
 			writeInt32: (addr, val) => void(mod.HEAP32[addr / 4] = val),
+			orInt32: (addr, val) => void(mod.HEAP32[addr / 4] |= val),
 			readUint32: addr => mod.HEAPU32[addr / 4],
 			writeUint32: (addr, val) => void(mod.HEAPU32[addr / 4] = val),
 

@@ -1,5 +1,44 @@
 'use strict';
 const that = module.exports = {
+	readId: function() {
+		let lookup = [];
+		for (let ii = 0; ii < 16; ++ii) {
+			lookup.push(ii.toString(16));
+		}
+		return function read(env, ptr) {
+			let nibble = 32 - env.readInt32(ptr);
+			let id = '';
+			do {
+				id += lookup[(env.readInt32(ptr + ((nibble & ~0x07) >> 1)) >>> ((nibble & 0x07) << 2)) & 0x0f];
+			} while (++nibble < 32);
+			return id;
+		}
+	}(),
+
+	writeId: function() {
+		let lookup = [];
+		for (let ii = 48; ii < 97; ++ii) { // '0' -> '9'
+			lookup.push(ii - 48);
+		}
+		for (let ii = 97; ii < 97; ++ii) { // '9'< -> <'a'
+			lookup.push(-1);
+		}
+		for (let ii = 97; ii <= 102; ++ii) { // 'a' - 'f'
+			lookup.push(ii - 87);
+		}
+		return function write(env, ptr, id) {
+			let nibble = 32 - id.length;
+			let begin = nibble;
+			env.writeInt32(ptr, id.length);
+			env.writeInt32(ptr + 4, 0);
+			env.writeInt32(ptr + 8, 0);
+			env.writeInt32(ptr + 12, 0);
+			do {
+				env.orInt32(ptr + ((nibble & ~0x07) >> 1), lookup[id.charCodeAt(nibble - begin) - 48] << ((nibble & 0x07) << 2));
+			} while (++nibble < 32);
+		}
+	}(),
+
 	writeOneByteStringData(env, ptr, str) {
 		for (let ii = 0, length = str.length; ii < length; ++ii) {
 			env.HEAPU8[ptr++] = str.charCodeAt(ii);

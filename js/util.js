@@ -5,7 +5,7 @@ let handleId = 0;
 
 const that = module.exports = {
 	getObjectById(env, id) {
-		return Game.getObjectById(StringLib.readOneByteString(env, id));
+		return Game.getObjectById(StringLib.readId(env, id));
 	},
 
 	enumToMap(list) {

@@ -4,6 +4,7 @@
 #include "./position.h"
 #include "./object.h"
 #include "./resource.h"
+#include "./string.h"
 #include "./memory/optional.h"
 #include <iosfwd>
 #include <optional>

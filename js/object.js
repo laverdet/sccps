@@ -393,7 +393,7 @@ const that = module.exports = {
 		ArrayLib.writeData(env, env.readPtr(ptr + roomStructures + env.ptrSize), structureSizeof, structures, that.writeStructure);
 
 		// Update creeps length now that we've searched all spawns for extra creeps
-		env.writeUint32(ptr + roomCreeps, creeps.length + (creepPtr - creepsData) / creepSizeof);
+		env.writeUint32(ptr + roomCreeps, (creepPtr - creepsData) / creepSizeof);
 
 		// Write mineral
 		let minerals = room.find(FIND_MINERALS);
@@ -419,7 +419,7 @@ const that = module.exports = {
 		if (obj.id.length > 24) {
 			throw new Error('`id` overflow');
 		}
-		StringLib.writeOneByteString(env, ptr + env.ptrSize, obj.id);
+		StringLib.writeId(env, ptr + 4, obj.id);
 	},
 
 	writeConstructionSite(env, ptr, constructionSite) {
@@ -538,11 +538,11 @@ const that = module.exports = {
 					env.writeInt32(ptr + structureSpawningNeedTime, structure.spawning.needTime);
 					env.writeInt32(ptr + structureSpawningRemainingTime, structure.spawning.remainingTime);
 					let creep = Game.creeps[structure.spawning.name];
-					StringLib.writeOneByteString(env, ptr + structureSpawningId, creep.id);
+					StringLib.writeId(env, ptr + structureSpawningId, creep.id);
 					env.writeInt8(ptr + structureSpawning, 1);
 					// The spawn is responsible for writing creep data because these creeps don't show up in Game.creeps
 					that.writeCreep(env, creepPtr, creep);
-					StringLib.writeOneByteString(env, creepPtr + creepSpawnId, structure.id);
+					StringLib.writeId(env, creepPtr + creepSpawnId, structure.id);
 					creepPtr += creepSizeof;
 				} else {
 					env.writeInt8(ptr + structureSpawning, 0);

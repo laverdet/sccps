@@ -3,7 +3,6 @@
 namespace screeps {
 
 // Constants which affect memory layout and maximum entities
-constexpr int kMaximumIdLength = 24;
 constexpr int kMaximumPathLength = 1500;
 
 // Screeps constants

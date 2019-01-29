@@ -69,6 +69,7 @@ struct memory_range_t {
 
 	// Called after the load to resize the container to the amount of elements writen
 	void shrink(container_t& container) {
+		assert(container.size() >= size);
 		container.resize(size);
 	}
 };
