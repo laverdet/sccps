@@ -4,9 +4,10 @@ include make/globals.mk
 include make/patterns.mk
 
 # Screeps C++ sources and object files
-SRCS := cpu.cc creep.cc game.cc handle.cc flag.cc memory.cc path-finder.cc position.cc resource.cc room.cc structure.cc terrain.cc visual.cc
+SRCS := cpu.cc creep.cc game.cc handle.cc flag.cc memory.cc module.cc path-finder.cc position.cc resource.cc room.cc structure.cc terrain.cc visual.cc
 SRCS := $(addprefix src/,$(SRCS))
-OBJS := $(addprefix $(BUILD_PATH)/,$(patsubst %.cc,%.bc,$(SRCS)))
+OBJS := $(addprefix $(BUILD_PATH)/,$(patsubst %.cc,%.o,$(SRCS)))
+BC_OBJS := $(addprefix $(BUILD_PATH)/,$(patsubst %.cc,%.bc,$(SRCS)))
 
 # Compilation options
 CXXFLAGS += -Iinclude
@@ -15,11 +16,11 @@ CXXFLAGS += -Iinclude
 MAIN2_EMFLAGS := -s DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$$($(TO_JSON) < emscripten_symbols) \
 	-s EXPORTED_FUNCTIONS=$$((cat dylib-symbols; egrep '[CD]1' dylib-symbols | perl -pe 's/([CD])1/$$1\x32/'; sed 's/^/_/' emscripten_symbols) | $(TO_JSON)) \
 	-s EXTRA_EXPORTED_RUNTIME_METHODS="['loadDynamicLibrary']"
-$(BUILD_PATH)/asmjs.js: $(OBJS) dylib-symbols | nothing
-	$(EMCXX) -o $@ $(OBJS) $(EMFLAGS) $(MAIN_EMFLAGS) $(ASMJS_EMFLAGS) $(MAIN2_EMFLAGS)
+$(BUILD_PATH)/asmjs.js: $(BC_OBJS) dylib-symbols | nothing
+	$(EMCXX) -o $@ $(BC_OBJS) $(EMFLAGS) $(MAIN_EMFLAGS) $(ASMJS_EMFLAGS) $(MAIN2_EMFLAGS)
 
 # llvm bytecode targets
-$(BUILD_PATH)/emasm-bc-files.txt: $(OBJS) | nothing
+$(BUILD_PATH)/emasm-bc-files.txt: $(BC_OBJS) | nothing
 	echo $^ > $@
 
 # module

@@ -18,9 +18,11 @@ js_handle_t::js_handle_ref_t::~js_handle_ref_t() {
 		return;
 	}
 #endif
+#ifdef JAVASCRIPT
 	EM_ASM({
 		Module.screeps.util.handleDtor($0);
 	}, this->ref);
+#endif
 }
 
-} // namespace screeps
+} // namespace screeps::internal

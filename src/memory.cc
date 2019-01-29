@@ -6,7 +6,7 @@ namespace screeps {
 bool raw_memory_t::load(memory_reader_t& reader, int segment) const {
 	// Load data from RawMemory
 	int size = EM_ASM_INT({
-		let data;
+		var data;
 		if ($0 === -1) {
 			data = RawMemory.get();
 		} else {
@@ -44,8 +44,8 @@ bool raw_memory_t::save(memory_writer_t& writer, int segment) const {
 
 	// Save to RawMemory
 	EM_ASM({
-		let length = ($2 >> 1) + ($2 % 2);
-		let data = Module.screeps.string.readTwoByteStringData(Module, $1, $2);
+		var length = ($2 >> 1) + ($2 % 2);
+		var data = Module.screeps.string.readTwoByteStringData(Module, $1, $2);
 		if ($0 === -1) {
 			RawMemory.set(data);
 		} else {
@@ -53,6 +53,10 @@ bool raw_memory_t::save(memory_writer_t& writer, int segment) const {
 		}
 	}, segment, writer.data(), size);
 	return true;
+}
+
+void raw_memory_t::set_active_segments(const int* /* begin */, const int* /* end */) const {
+	assert(false);
 }
 
 } // namespace screeps

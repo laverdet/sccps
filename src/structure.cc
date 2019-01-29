@@ -91,6 +91,7 @@ void structure_t::init() {
 /**
  * spawn_t
  */
+#ifdef JAVASCRIPT
 spawn_t::body_t:: body_t(const std::vector<bodypart_t>& parts) : internal::js_handle_t([&]() {
 	return EM_ASM_INT({
 		var body = [];
@@ -140,6 +141,52 @@ void spawn_t::spawning_t::set_directions(directions_t directions) const {
 		}
 		Module.screeps.util.getObjectById(Module, $0).spawning.setDirections(directions);
 	}, &this->spawn().id, directions.bits);
+}
+#else
+spawn_t::body_t::body_t(const std::vector<bodypart_t>& /* parts */) : internal::js_handle_t(0) {
+}
+
+int spawn_t::spawn_creep(const body_t& /* body */, const std::string& name, const options_t& /* options */) const {
+	std::cerr <<*this <<".spawn_creep(..., \"" <<name <<"\")\n";
+	return 0;
+}
+
+void spawn_t::spawning_t::cancel() const {
+	std::cerr <<this->spawn() <<".spawning.cancel()\n";
+}
+
+void spawn_t::spawning_t::set_directions(directions_t directions) const {
+	std::cerr <<this->spawn() <<".spawning.set_directions(...)\n";
+}
+#endif
+
+std::ostream& operator<<(std::ostream& os, const structure_t& that) {
+	os <<"structure_t[";
+	switch (that.type) {
+		case structure_t::none: os<<"none"; break;
+		case structure_t::size: os<<"size"; break;
+		case structure_t::container: os <<"container"; break;
+		case structure_t::controller: os <<"controller"; break;
+		case structure_t::extension: os <<"extension"; break;
+		case structure_t::extractor: os <<"extractor"; break;
+		case structure_t::keeper_lair: os <<"keeper_lair"; break;
+		case structure_t::lab: os <<"lab"; break;
+		case structure_t::link: os <<"link"; break;
+		case structure_t::nuker: os <<"nuker"; break;
+		case structure_t::observer: os <<"observer"; break;
+		case structure_t::portal: os <<"portal"; break;
+		case structure_t::power_bank: os <<"power_bank"; break;
+		case structure_t::power_spawn: os <<"power_spawn"; break;
+		case structure_t::rampart: os <<"rampart"; break;
+		case structure_t::road: os <<"road"; break;
+		case structure_t::spawn: os <<"spawn"; break;
+		case structure_t::storage: os <<"storage"; break;
+		case structure_t::terminal: os <<"terminal"; break;
+		case structure_t::tower: os <<"tower"; break;
+		case structure_t::wall: os <<"wall"; break;
+	}
+	os <<", [" <<that.pos.room_location() <<" " <<that.pos.xx % 50 <<", " <<that.pos.yy % 50 <<"], " <<that.id <<"]";
+	return os;
 }
 
 } // namespace screeps

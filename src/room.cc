@@ -94,6 +94,36 @@ void room_t::init() {
 	);
 }
 
+int room_t::create_construction_site(position_t pos, structure_t::type_t structure_type, const std::string& name) const {
+	if (pos.room_location() != location) {
+		// JS @screeps/engine doesn't actually check this..
+		return k_err_invalid_args;
+	}
+	return create_construction_site(pos.to_local(), structure_type, name);
+}
+
+int room_t::create_construction_site(local_position_t pos, structure_t::type_t structure_type, const std::string& name) const {
+#ifdef JAVASCRIPT
+	return EM_ASM_INT({
+		return Game.rooms[
+			Module.screeps.position.generateRoomName($0)
+		].createConstructionSite(
+			$1, $2,
+			Module.screeps.object.readStructureType($3),
+			Module.screeps.string.readOneByteStringData(Module, $4, $5)
+		);
+	},
+		location.id,
+		pos.xx, pos.yy,
+		structure_type,
+		name.data(), name.size()
+	);
+#else
+	std::cerr <<location <<".create_construction_site(" <<pos <<", " <<structure_type <<", \"" <<name <<"\")\n";
+	return 0;
+#endif
+}
+
 EMSCRIPTEN_KEEPALIVE
 void room_t::ensure_capacity(room_t* room) {
 	room->invoke_containers([&](auto& container, auto& memory) {
@@ -113,22 +143,30 @@ void room_t::shrink() {
 	});
 }
 
-int room_t::create_construction_site(local_position_t pos, structure_t::type_t structure_type, const std::string& name) const {
-	return EM_ASM_INT({
-		return Game.rooms[
-			Module.screeps.position.generateRoomName($0)
-		].createConstructionSite(
-			$1, $2,
-			Module.screeps.object.readStructureType($3),
-			Module.screeps.string.readOneByteStringData(Module, $4, $5)
-		);
-	},
-		location.id,
-		pos.xx, pos.yy,
-		structure_type,
-		name.data(), name.size()
-	);
-	return 0;
+void room_t::update_pointers() {
+	construction_sites = {nullptr, nullptr};
+	flags = {nullptr, nullptr};
+	if (mineral != nullptr) {
+		mineral = &mineral_holder;
+	}
+	controller = nullptr;
+/*
+	storage = nullptr;
+	terminal = nullptr;
+*/
+	for (auto& structure : structures) {
+		if (auto controller = structure.get<controller_t>(); controller != nullptr) {
+			this->controller = controller;
+		}
+/*
+			case structure_t::storage:
+				storage = &structure;
+				break;
+			case structure_t::terminal:
+				terminal = &structure;
+				break;
+*/
+	}
 }
 
 } // namespace screeps

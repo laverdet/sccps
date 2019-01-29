@@ -1,7 +1,12 @@
 #pragma once
 #ifdef __EMSCRIPTEN__
+#define JAVASCRIPT
 #include <emscripten.h>
-#else
+#elif BUILDING_NODE_EXTENSION
+#define JAVASCRIPT
+#define EMSCRIPTEN_KEEPALIVE
+#define EM_ASM(code, args...) (inline_javascript(#code, args))
+#define EM_ASM_INT(code, args...) (inline_javascript(#code, args))
 #include <nan.h>
 #include <cstdint>
 #include <cstdio>
@@ -60,8 +65,18 @@ int inline_javascript(const char* fragment, Args... args) {
 		throw;
 	}
 }
-#define EMSCRIPTEN_KEEPALIVE
-#define EM_ASM(code, args...) (inline_javascript(#code, args))
-#define EM_ASM_INT(code, args...) (inline_javascript(#code, args))
 } // namespace screeps
+#else
+#include <iostream>
+namespace {
+template <class... Args>
+int tried_to_run_javascript(const char* code, Args&&... /* args */) {
+	std::cerr <<"Tried to run JavaScript as standalone: " <<code <<"\n";
+	std::terminate();
+	return 0;
+}
+}
+#define EMSCRIPTEN_KEEPALIVE
+#define EM_ASM(code, args...) (tried_to_run_javascript(#code, args))
+#define EM_ASM_INT(code, args...) (tried_to_run_javascript(#code, args))
 #endif

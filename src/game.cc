@@ -1,13 +1,59 @@
 #include <screeps/game.h>
 #include <algorithm>
-#include <deque>
 #include "./javascript.h"
 
 namespace screeps {
 
-/**
- * game_state_t implementation
- */
+//
+// game_state_t implementation
+EMSCRIPTEN_KEEPALIVE
+void game_state_t::init_layout() {
+	EM_ASM({
+		Module.screeps.object.initGameLayout({
+			'constructionSites': $0,
+			'flags': $1,
+			'rooms': $2,
+			'memory': $3,
+
+			'gcl': $4,
+			'time': $5,
+		});
+	},
+		offsetof(game_state_t, construction_sites_memory),
+		offsetof(game_state_t, flags_memory),
+		offsetof(game_state_t, room_pointers_memory),
+		offsetof(game_state_t, memory),
+
+		offsetof(game_state_t, gcl),
+		offsetof(game_state_t, time)
+	);
+	creep_t::init();
+	flag_t::init();
+	room_t::init();
+	structure_t::init();
+}
+
+void game_state_t::clear_indices() {
+	construction_sites_by_id.clear();
+	creeps_by_id.clear();
+	creeps_by_name.clear();
+	dropped_resources_by_id.clear();
+	flags_by_name.clear();
+	sources_by_id.clear();
+	structures_by_id.clear();
+	tombstones_by_id.clear();
+	memory.reset();
+}
+
+EMSCRIPTEN_KEEPALIVE
+void game_state_t::ensure_capacity(game_state_t* game) {
+	if (game->room_pointers_memory.ensure_capacity(game->room_pointers)) {
+		game->write_room_pointers();
+	}
+	game->construction_sites_memory.ensure_capacity(game->construction_sites);
+	game->flags_memory.ensure_capacity(game->flags);
+}
+
 void game_state_t::load() {
 
 	// Reset memory for flags and sites
@@ -74,6 +120,32 @@ void game_state_t::load() {
 	update_pointers();
 }
 
+void game_state_t::update_pointers() {
+	update_pointer_container<&room_t::construction_sites>(construction_sites);
+	update_pointer_container<&room_t::flags>(flags);
+}
+
+template <auto Property, class Container>
+void game_state_t::update_pointer_container(Container& container) {
+	typename Container::value_type* current = nullptr;
+	room_location_t current_location;
+	for (auto& object : container) {
+		auto location = object.pos.room_location();
+		if (current == nullptr) {
+			current = &object;
+			current_location = location;
+		}
+		if (&object == &container.back() || location != current_location) {
+			auto ii = rooms.find(object.pos.room_location());
+			if (ii != rooms.end()) {
+				auto& [location, room] = *ii;
+				room.*Property = {current, &object + 1};
+				current = nullptr;
+			}
+		}
+	}
+}
+
 void game_state_t::write_room_pointers() {
 	// Write out existing room pointers
 	auto ii = room_pointers.begin();
@@ -100,107 +172,17 @@ void game_state_t::write_room_pointers() {
 	});
 }
 
-EMSCRIPTEN_KEEPALIVE
-void game_state_t::init_layout() {
-	EM_ASM({
-		Module.screeps.object.initGameLayout({
-			'constructionSites': $0,
-			'flags': $1,
-			'rooms': $2,
-			'memory': $3,
-
-			'gcl': $4,
-			'time': $5,
-		});
-	},
-		offsetof(game_state_t, construction_sites_memory),
-		offsetof(game_state_t, flags_memory),
-		offsetof(game_state_t, room_pointers_memory),
-		offsetof(game_state_t, memory),
-
-		offsetof(game_state_t, gcl),
-		offsetof(game_state_t, time)
-	);
-	creep_t::init();
-	flag_t::init();
-	room_t::init();
-	structure_t::init();
+std::ostream& operator<<(std::ostream& os, const sid_t& that) {
+	int nibble = 32 - that.length;
+	do {
+		int val = ((that.bytes[(nibble >> 3) - 1]) >> ((nibble & 0x07) << 2)) & 0x0f;
+		os <<static_cast<char>(val + (val > 9 ? 'a' - 10 : '0'));
+	} while (++nibble < 32);
+	return os;
 }
 
-EMSCRIPTEN_KEEPALIVE
-void game_state_t::ensure_capacity(game_state_t* game) {
-	if (game->room_pointers_memory.ensure_capacity(game->room_pointers)) {
-		game->write_room_pointers();
-	}
-	game->construction_sites_memory.ensure_capacity(game->construction_sites);
-	game->flags_memory.ensure_capacity(game->flags);
-}
-
-// Called in the case of an uncaught exception. This does the `what()` virtual function call and
-// also returns RTTI.
-EMSCRIPTEN_KEEPALIVE
-void* exception_what(void* ptr) {
-	struct hole_t {
-		const char* name;
-		const char* what;
-	};
-	static hole_t hole;
-	auto& err = *reinterpret_cast<const std::exception*>(ptr);
-	hole.name = typeid(err).name();
-	hole.what = err.what();
-	return reinterpret_cast<void*>(&hole);
+std::ostream& operator<<(std::ostream& os, const game_object_t& that) {
+	return os <<"game_object_t[" <<that.id <<"]";
 }
 
 } // namespace screeps
-
-// Keep loop function alive
-EMSCRIPTEN_KEEPALIVE void loop();
-
-// Native module loader
-#ifndef __EMSCRIPTEN__
-#include <nan.h>
-#include <isolated_vm.h>
-using namespace v8;
-
-NAN_METHOD(mod_make_array_buffer) {
-	size_t addr = Nan::To<int64_t>(info[0]).ToChecked();
-	auto ab = ArrayBuffer::New(Isolate::GetCurrent(), reinterpret_cast<void*>(addr == 0 ? 0xdeadbeef : addr), 0x100000000);
-	info.GetReturnValue().Set(ab);
-	if (addr == 0) {
-		// v8 won't let you create a buffer starting at address 0 so I cheat.
-		auto hack = **(char***)&ab;
-		for (int ii = 0; ii < 100; ++ii) {
-			auto& value = *(unsigned int*)(hack + ii);
-			if (value == 0xdeadbeef) {
-				value = 0;
-				return;
-			}
-		}
-		throw std::runtime_error("Failed to be sneaky");
-	}
-}
-
-NAN_METHOD(mod_game_state_init_layout) {
-	screeps::game_state_t::init_layout();
-}
-
-NAN_METHOD(mod_game_state_ensure_capacity) {
-	screeps::game_state_t::ensure_capacity(reinterpret_cast<screeps::game_state_t*>(Nan::To<int64_t>(info[0]).ToChecked()));
-}
-
-NAN_METHOD(mod_room_ensure_capacity) {
-	screeps::room_t::ensure_capacity(reinterpret_cast<screeps::room_t*>(Nan::To<int64_t>(info[0]).ToChecked()));
-}
-
-NAN_METHOD(mod_loop) {
-	loop();
-}
-
-ISOLATED_VM_MODULE void InitForContext(Isolate* isolate, Local<Context> context, Local<Object> target) {
-	Nan::SetMethod(target, "makeArrayBuffer", mod_make_array_buffer);
-	Nan::SetMethod(target, "__ZN7screeps12game_state_t11init_layoutEv", mod_game_state_init_layout);
-	Nan::SetMethod(target, "__ZN7screeps12game_state_t15ensure_capacityEPS0_", mod_game_state_ensure_capacity);
-	Nan::SetMethod(target, "__ZN7screeps6room_t15ensure_capacityEPS0_", mod_room_ensure_capacity);
-	Nan::SetMethod(target, "__Z4loopv", mod_loop);
-}
-#endif
