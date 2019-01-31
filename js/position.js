@@ -17,8 +17,8 @@ const that = module.exports = {
 			if (bits === 0) {
 				roomName = 'sim';
 			} else {
-				let rx = bits >> 16;
-				let ry = bits & 0xff;
+				let ry = bits >> 16;
+				let rx = bits & 0xff;
 				roomName = (
 					(rx < kWorldSize2 ? `W${kWorldSize2 - rx - 1}` : `E${rx - kWorldSize2}`)+
 					(ry < kWorldSize2 ? `N${kWorldSize2 - ry - 1}` : `S${ry - kWorldSize2}`)
