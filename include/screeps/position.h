@@ -253,8 +253,8 @@ constexpr Position in_direction(Position position, direction_t direction) {
 
 // Generates a range of directions by template stored indefinitely and returns them
 template <direction_t... Directions>
-static std::pair<const direction_t*, const direction_t*> make_direction_range() {
-	static std::array<direction_t, sizeof...(Directions)> directions{{Directions...}};
+inline std::pair<const direction_t*, const direction_t*> make_direction_range() {
+	static constexpr std::array<direction_t, sizeof...(Directions)> directions{{Directions...}};
 	return {directions.data(), directions.data() + directions.size()};
 }
 
@@ -836,49 +836,38 @@ constexpr auto world_position_t::neighbors() const {
 	return detail::neighbor_iterable_t<world_position_t>::world_neighbors(*this);
 }
 
-// Matrix of any type which holds a value for each position in a room
-template <class Type, class Store, size_t Pack, bool Packed = sizeof(Store) << 3 != Pack>
-class local_matrix_store_t {};
+namespace detail {
 
-template <class Type, class Store, size_t Pack>
-class local_matrix_store_t<Type, Store, Pack, false> {
-	protected:
-		std::array<Store, 2500> costs;
+// Matrix of any type which holds a value for each position in a room
+template <class Type, class Store = void, int Pack = -1>
+class local_matrix_store_t;
+
+// Default specialization-- no bitpacking
+template <class Type>
+class local_matrix_store_t<Type, void, -1> {
+	public:
 		using reference = Type&;
 		using const_reference = const Type&;
 
-	public:
 		constexpr local_matrix_store_t() = default;
-		explicit constexpr local_matrix_store_t(Type value) {
-			fill(value);
-		}
+		explicit constexpr local_matrix_store_t(Type value) { fill(value); }
 
-		constexpr void fill(Type value) {
-			std::fill(costs.begin(), costs.end(), value);
-		}
+		constexpr reference operator[](int index) { return costs[index]; }
+		constexpr const_reference operator[](int index) const { return costs[index]; }
 
-		constexpr reference operator[](int index) {
-			return costs[index];
-		}
+		constexpr Type* data() { return costs.data(); }
+		constexpr const Type* data() const { return costs.data(); }
+		constexpr void fill(Type value) { std::fill(costs.begin(), costs.end(), value); }
 
-		constexpr const_reference operator[](int index) const {
-			return costs[index];
-		}
-
-		constexpr Store* data() {
-			return costs.data();
-		}
-
-		constexpr const Store* data() const {
-			return costs.data();
-		}
+	protected:
+		std::array<Type, 2500> costs;
 };
 
 // Backing store for local_matrix_t which can bitpack 1, 2, or 4 bits into a matrix
-template <class Type, class Store, size_t Pack>
-class local_matrix_store_t<Type, Store, Pack, true> {
-	protected:
-		static constexpr int log2(size_t value) {
+template <class Type, class Store, int Pack>
+class local_matrix_store_t {
+	private:
+		static constexpr int log2(int value) {
 			return value == 1 ? 0 : (1 + log2(value >> 1));
 		}
 		static constexpr int StoreBits = sizeof(Store) << 3;
@@ -887,16 +876,8 @@ class local_matrix_store_t<Type, Store, Pack, true> {
 		static constexpr int IndexBitShift = log2(Pack);
 		static constexpr Store Mask = (1 << Pack) - 1;
 
-		static_assert(StoreBits >= Pack, "sizeof(Store) must be greater than or equal to pack bits");
-		static_assert(StoreBits % Pack == 0, "Store is not aligned to pack bits");
-
-		std::array<Store, (2500 * Pack + StoreBits / Pack) / StoreBits> costs;
-
+	public:
 		class reference {
-			private:
-				Store& ref;
-				int bit_pos;
-
 			public:
 				constexpr reference(int bit_pos, Store& ref) : ref(ref), bit_pos(bit_pos) {}
 				constexpr operator Type() const { // NOLINT(hicpp-explicit-conversions)
@@ -906,10 +887,13 @@ class local_matrix_store_t<Type, Store, Pack, true> {
 					ref = (ref & ~(Mask << bit_pos)) | ((value & Mask) << bit_pos);
 					return *this;
 				}
+
+			private:
+				Store& ref;
+				int bit_pos;
 		};
 		using const_reference = Type;
 
-	public:
 		constexpr local_matrix_store_t() {
 			// Explicitly assign final data entry because otherwise it could be anything and .data() would
 			// be inconsistent
@@ -921,6 +905,17 @@ class local_matrix_store_t<Type, Store, Pack, true> {
 			fill(value);
 		}
 
+		constexpr reference operator[](int index) {
+			return {(index & IndexMask) << IndexBitShift, costs[index >> IndexShift]};
+		}
+
+		constexpr const_reference operator[](int index) const {
+			return (costs[index >> IndexShift] >> ((index & IndexMask) << IndexBitShift)) & Mask;
+		}
+
+		constexpr Store* data() { return costs.data(); }
+		constexpr const Store* data() const { return costs.data(); }
+
 		constexpr void fill(Type value) {
 			Store packed{};
 			for (int ii = 0; ii < StoreBits; ii += Pack) {
@@ -930,39 +925,58 @@ class local_matrix_store_t<Type, Store, Pack, true> {
 			costs.fill(packed);
 		}
 
-		constexpr reference operator[](int index) {
-			return {(index & IndexMask) << IndexBitShift, costs[index >> IndexShift]};
-		}
-
-		constexpr const_reference operator[](int index) const {
-			return (costs[index >> IndexShift] >> ((index & IndexMask) << IndexBitShift)) & Mask;
-		}
-
-		constexpr Store* data() {
-			return costs.data();
-		}
-
-		constexpr const Store* data() const {
-			return costs.data();
-		}
+	protected:
+		static_assert(StoreBits >= Pack, "sizeof(Store) must be greater than or equal to pack bits");
+		static_assert(StoreBits % Pack == 0, "Store is not aligned to pack bits");
+		std::array<Store, (2500 * Pack + StoreBits / Pack) / StoreBits> costs;
 };
 
-// Extra methods on top of the backing store which accept local_position_t or xx/yy coords
-template <
-	class Type,
-	class Store = std::conditional_t<std::is_same_v<Type, bool>, uint32_t, Type>,
-	size_t Pack = std::conditional_t<
-		std::is_same<Type, bool>::value,
-		std::integral_constant<size_t, 1>,
-		std::integral_constant<size_t, sizeof(Store) << 3>
-	>::value
->
-class local_matrix_t : public local_matrix_store_t<Type, Store, Pack> {
+// Specialization for direction_t packing
+template <>
+class local_matrix_store_t<direction_t, void, -1> : public local_matrix_store_t<int, int, 4> {
+	private:
+		using store_t = local_matrix_store_t<int, int, 4>;
+
 	public:
-		using local_matrix_store_t<Type, Store, Pack>::local_matrix_store_t;
-		using local_matrix_store_t<Type, Store, Pack>::operator[];
-		using reference = typename local_matrix_store_t<Type, Store, Pack>::reference;
-		using const_reference = typename local_matrix_store_t<Type, Store, Pack>::const_reference;
+		class reference : store_t::reference {
+			public:
+				explicit constexpr reference(store_t::reference reference) : store_t::reference(reference) {}
+				constexpr reference(int bit_pos, int& ref) : store_t::reference(bit_pos, ref) {}
+				constexpr operator direction_t() const { // NOLINT(hicpp-explicit-conversions)
+					return static_cast<direction_t>(store_t::reference::operator int() + 1);
+				}
+				constexpr reference& operator=(direction_t value) {
+					store_t::reference::operator=(+value - 1);
+					return *this;
+				}
+		};
+		using const_reference = direction_t;
+
+		constexpr local_matrix_store_t() : store_t() {}
+		explicit constexpr local_matrix_store_t(direction_t value) : store_t(+value - 1) {}
+
+		constexpr reference operator[](int index) { return reference(store_t::operator[](index)); }
+		constexpr const_reference operator[](int index) const { return static_cast<direction_t>(store_t::operator[](index) + 1); }
+
+		constexpr void fill(direction_t value) { store_t::fill(+value - 1); }
+};
+
+// Bitpack bools
+template <>
+class local_matrix_store_t<bool, void, -1> : public local_matrix_store_t<bool, int, 1> {
+	public: using local_matrix_store_t<bool, int, 1>::local_matrix_store_t;
+};
+
+} // namespace detail
+
+// Extra methods on top of the backing store which accept local_position_t or xx/yy coords
+template <class Type, class Store = void, int Pack = -1>
+class local_matrix_t : public detail::local_matrix_store_t<Type, Store, Pack> {
+	public:
+		using reference = typename detail::local_matrix_store_t<Type, Store, Pack>::reference;
+		using const_reference = typename detail::local_matrix_store_t<Type, Store, Pack>::const_reference;
+		using detail::local_matrix_store_t<Type, Store, Pack>::local_matrix_store_t;
+		using detail::local_matrix_store_t<Type, Store, Pack>::operator[];
 
 		template <class Memory>
 		void serialize(Memory& memory) {
@@ -970,58 +984,39 @@ class local_matrix_t : public local_matrix_store_t<Type, Store, Pack> {
 			memory.copy(data, reinterpret_cast<uint8_t*>(this->costs.data() + this->costs.size()) - data);
 		}
 
-		constexpr bool operator==(const local_matrix_t& rhs) const {
-			return this->costs == rhs.costs;
-		}
+		constexpr bool operator==(const local_matrix_t& rhs) const { return this->costs == rhs.costs; }
+		constexpr bool operator!=(const local_matrix_t& rhs) const { return !(*this == rhs); }
+		constexpr reference operator[](local_position_t pos) { return get(pos.xx, pos.yy); }
+		constexpr const_reference operator[](local_position_t pos) const { return get(pos.xx, pos.yy); }
 
-		constexpr bool operator!=(const local_matrix_t& rhs) const {
-			return this->costs != rhs.costs;
-		}
-
-		constexpr reference get(int xx, int yy) {
-			return (*this)[xx * 50 + yy];
-		}
-
-		constexpr const_reference get(int xx, int yy) const {
-			return (*this)[xx * 50 + yy];
-		}
-
-		constexpr void set(int xx, int yy, Type cost) {
-			(*this)[xx * 50 + yy] = cost;
-		}
-
-		constexpr reference operator[](local_position_t pos) {
-			return get(pos.xx, pos.yy);
-		}
-
-		constexpr const_reference operator[](local_position_t pos) const {
-			return get(pos.xx, pos.yy);
-		}
+		constexpr reference get(int xx, int yy) { return (*this)[xx * 50 + yy]; }
+		constexpr const_reference get(int xx, int yy) const { return (*this)[xx * 50 + yy]; }
+		constexpr void set(int xx, int yy, Type cost) { (*this)[xx * 50 + yy] = cost; }
 };
 
 } // namespace screeps
 
 // Hash specialization for hashing STL containers
 template <> struct std::hash<screeps::room_location_t> {
-	size_t operator()(const screeps::room_location_t& location) const {
+	constexpr size_t operator()(const screeps::room_location_t& location) const {
 		return screeps::detail::flatten(location);
 	}
 };
 
 template <> struct std::hash<screeps::position_t> {
-	size_t operator()(const screeps::position_t& position) const {
+	constexpr size_t operator()(const screeps::position_t& position) const {
 		return screeps::detail::flatten(position);
 	}
 };
 
 template <> struct std::hash<screeps::local_position_t> {
-	size_t operator()(const screeps::local_position_t& position) const {
+	constexpr size_t operator()(const screeps::local_position_t& position) const {
 		return screeps::detail::flatten(position);
 	}
 };
 
 template <> struct std::hash<screeps::world_position_t> {
-	size_t operator()(const screeps::world_position_t& position) const {
+	constexpr size_t operator()(const screeps::world_position_t& position) const {
 		return screeps::detail::flatten(position);
 	}
 };
