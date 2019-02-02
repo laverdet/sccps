@@ -95,11 +95,11 @@ void room_t::init() {
 }
 
 int room_t::create_construction_site(position_t pos, structure_t::type_t structure_type, const std::string& name) const {
-	if (pos.room_location() != location) {
+	if (pos.room != location) {
 		// JS @screeps/engine doesn't actually check this..
 		return k_err_invalid_args;
 	}
-	return create_construction_site(pos.to_local(), structure_type, name);
+	return create_construction_site(~pos, structure_type, name);
 }
 
 int room_t::create_construction_site(local_position_t pos, structure_t::type_t structure_type, const std::string& name) const {
@@ -113,7 +113,7 @@ int room_t::create_construction_site(local_position_t pos, structure_t::type_t s
 			Module.screeps.string.readOneByteStringData(Module, $4, $5)
 		);
 	},
-		location.id,
+		detail::flatten(location),
 		pos.xx, pos.yy,
 		structure_type,
 		name.data(), name.size()

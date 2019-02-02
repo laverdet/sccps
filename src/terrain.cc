@@ -70,7 +70,7 @@ terrain_t::terrain_t(room_location_t room) {
 				view[index >> 2] |= val << ((index & 3) << 1);
 			}
 		}
-	}, room.id, this);
+	}, detail::flatten(room), this);
 }
 
 void terrain_t::insert(room_location_t room, std::shared_ptr<terrain_t> terrain) {

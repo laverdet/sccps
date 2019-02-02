@@ -2,6 +2,7 @@
 #include "./array.h"
 #include "./constants.h"
 #include "./position.h"
+#include <functional>
 #include <memory>
 #include <vector>
 

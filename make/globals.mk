@@ -22,7 +22,7 @@ SPACE := $(NOTHING) $(NOTHING)
 COMMA := ,
 
 # Default compiler flags
-CXXFLAGS += -std=c++17 -Wall -Wextra -Wno-invalid-offsetof
+CXXFLAGS += -xc++ -std=c++17 -Wall -Wextra -Wno-invalid-offsetof
 EMFLAGS += -s STRICT=1 -s ABORTING_MALLOC=0
 MAIN_EMFLAGS += -s MAIN_MODULE=2 -s ENVIRONMENT=shell -s NO_FILESYSTEM=1 -s TOTAL_MEMORY=201326592
 SIDE_EMFLAGS += -s SIDE_MODULE=1 -s EXPORT_ALL=1

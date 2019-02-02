@@ -20,31 +20,31 @@ std::ostream& operator<<(std::ostream& os, direction_t dir) {
 	return os <<(int)dir;
 }
 
-std::ostream& operator<<(std::ostream& os, room_location_t that) {
-	if (that.id == 0) {
+std::ostream& operator<<(std::ostream& os, room_location_t location) {
+	if (location.xx == -0x80 && location.yy == -0x80) {
 		os <<"sim";
 	} else {
-		if (that.xx < k_world_size2) {
-			os <<'W' <<k_world_size2 - that.xx - 1;
+		if (location.xx < 0) {
+			os <<'W' <<static_cast<int>(-location.xx - 1);
 		} else {
-			os <<'E' <<that.xx - k_world_size2;
+			os <<'E' <<static_cast<int>(location.xx);
 		}
-		if (that.yy < k_world_size2) {
-			os <<'N' <<k_world_size2 - that.yy - 1;
+		if (location.yy < 0) {
+			os <<'N' <<static_cast<int>(-location.yy - 1);
 		} else {
-			os <<'S' <<that.yy - k_world_size2;
+			os <<'S' <<static_cast<int>(location.yy);
 		}
 	}
 	return os;
 }
 
-std::ostream& operator<<(std::ostream& os, local_position_t that) {
-	os <<"local_position_t[" <<(int)that.xx <<", " <<(int)that.yy <<"]";
+std::ostream& operator<<(std::ostream& os, local_position_t position) {
+	os <<"local_position_t(" <<static_cast<int>(position.xx) <<", " <<static_cast<int>(position.yy) <<")";
 	return os;
 }
 
-std::ostream& operator<<(std::ostream& os, position_t that) {
-	os <<"position_t[" <<that.room_location() <<", " <<that.xx % 50 <<", " <<that.yy % 50 <<"]";
+std::ostream& operator<<(std::ostream& os, position_t position) {
+	os <<"position_t(\"" <<position.room <<"\", " <<static_cast<int>(position.xx) <<", " <<static_cast<int>(position.yy) <<")";
 	return os;
 }
 

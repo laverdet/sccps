@@ -313,7 +313,7 @@ const that = module.exports = {
 		let roomPointersEnd = roomPointers + roomPointersLength * env.ptrSize;
 		let extraRoomPointers = roomPointers;
 		let unusedRoomPointers = [];
-		while (roomPointers !== roomPointersEnd && env.readUint32(env.readPtr(roomPointers) + roomLocation) === 0) {
+		while (roomPointers !== roomPointersEnd && env.readUint16(env.readPtr(roomPointers) + roomLocation) === 0) {
 			roomPointers += env.ptrSize;
 		}
 		rooms.sort(function(left, right) {
@@ -334,7 +334,7 @@ const that = module.exports = {
 					break;
 				} else {
 					roomPtr = env.readPtr(roomPointers);
-					let nextRoomId = env.readInt32(roomPtr + roomLocation);
+					let nextRoomId = env.readUint16(roomPtr + roomLocation);
 					if (nextRoomId < roomId) {
 						roomPointers += env.ptrSize;
 						unusedRoomPointers.push(roomPtr);
@@ -362,7 +362,7 @@ const that = module.exports = {
 
 	writeRoom(env, ptr, roomId, room) {
 		// Write room data
-		env.writeInt32(ptr + roomLocation, roomId);
+		env.writeUint16(ptr + roomLocation, roomId);
 		env.writeInt32(ptr + roomEnergyAvailable, room.energyAvailable);
 		env.writeInt32(ptr + roomEnergyCapacityAvailable, room.energyCapacityAvailable);
 
@@ -410,8 +410,7 @@ const that = module.exports = {
 
 	writeRoomObject(env, ptr, pos) {
 		let room = PositionLib.parseRoomName(pos.roomName);
-		env.writeUint16(ptr + 0, pos.x + (room & 0xff) * 50);
-		env.writeUint16(ptr + 2, pos.y + (room >> 16) * 50);
+		env.writeInt32(ptr, (room << 16) | (pos.y << 8) | pos.x);
 	},
 
 	writeGameObject(env, ptr, obj) {

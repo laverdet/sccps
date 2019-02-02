@@ -94,8 +94,9 @@ void game_state_t::load() {
 			auto tmp = std::move(ii->second);
 			auto location = tmp.location;
 			ii = rooms.erase(ii);
-			if (location == room_location_t(0)) {
-				extra_rooms.emplace(std::piecewise_construct, std::forward_as_tuple(++extra_room_key), std::forward_as_tuple(std::move(tmp)));
+			if (location == room_location_t::null) {
+				++extra_room_key;
+				extra_rooms.emplace(std::piecewise_construct, std::tuple(extra_room_key % 0xff, extra_room_key / 0xff), std::forward_as_tuple(std::move(tmp)));
 			} else {
 				auto [it, did_insert] = rooms.emplace(std::piecewise_construct, std::forward_as_tuple(location), std::forward_as_tuple(std::move(tmp)));
 				it->second.update_pointers();
@@ -105,7 +106,7 @@ void game_state_t::load() {
 	for (auto ii = extra_rooms.begin(); ii != extra_rooms.end(); ) {
 		if (++count > 10) throw std::runtime_error("uh oh");
 		ii->second.shrink();
-		if (ii->second.location == room_location_t(0)) {
+		if (ii->second.location == room_location_t::null) {
 			++ii;
 		} else {
 			auto tmp = std::move(ii->second);
@@ -130,13 +131,13 @@ void game_state_t::update_pointer_container(Container& container) {
 	typename Container::value_type* current = nullptr;
 	room_location_t current_location;
 	for (auto& object : container) {
-		auto location = object.pos.room_location();
+		auto location = object.pos.room;
 		if (current == nullptr) {
 			current = &object;
 			current_location = location;
 		}
 		if (&object == &container.back() || location != current_location) {
-			auto ii = rooms.find(object.pos.room_location());
+			auto ii = rooms.find(object.pos.room);
 			if (ii != rooms.end()) {
 				auto& [location, room] = *ii;
 				room.*Property = {current, &object + 1};
@@ -155,7 +156,8 @@ void game_state_t::write_room_pointers() {
 	// Fill or shrink extra_rooms
 	int count = room_pointers_memory.size - rooms.size() - extra_rooms.size();
 	while (count > 0) {
-		extra_rooms.emplace(std::piecewise_construct, std::forward_as_tuple(++extra_room_key), std::forward_as_tuple());
+		++extra_room_key;
+		extra_rooms.emplace(std::piecewise_construct, std::tuple(extra_room_key % 0xff, extra_room_key / 0xff), std::forward_as_tuple());
 		--count;
 	}
 	while (count < 0) {
@@ -165,10 +167,10 @@ void game_state_t::write_room_pointers() {
 	// Write out extra room pointers
 	for (auto& [location, room] : extra_rooms) {
 		*ii++ = &room;
-		room.location = room_location_t(0);
+		room.location = room_location_t::null;
 	}
 	std::sort(room_pointers.begin(), room_pointers.end(), [](room_t* left, room_t* right) {
-		return left->location.id < right->location.id;
+		return left->location < right->location;
 	});
 }
 

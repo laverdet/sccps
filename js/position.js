@@ -5,23 +5,17 @@ let visualCache = new Map;
 let roomNameCache = new Map;
 
 const that = module.exports = {
-	read(env, ptr) {
-		let xx = env.readUint16(ptr);
-		let yy = env.readUint16(ptr + 2);
-		return new RoomPosition(xx % 50, yy % 50, that.generateRoomName(xx / 50 | 0, yy / 50 | 0));
-	},
-
 	generateRoomName(bits) {
 		let roomName = roomNameCache.get(bits);
 		if (roomName === undefined) {
-			if (bits === 0) {
+			if (bits === 0x8080) {
 				roomName = 'sim';
 			} else {
-				let ry = bits >> 16;
 				let rx = bits & 0xff;
+				let ry = bits >> 8;
 				roomName = (
-					(rx < kWorldSize2 ? `W${kWorldSize2 - rx - 1}` : `E${rx - kWorldSize2}`)+
-					(ry < kWorldSize2 ? `N${kWorldSize2 - ry - 1}` : `S${ry - kWorldSize2}`)
+					(rx > 0x7f ? `W${0xff - rx}` : `E${rx}`)+
+					(ry > 0x7f ? `N${0xff - ry}` : `S${ry}`)
 				);
 			}
 			roomNameCache.set(bits, roomName);
@@ -31,7 +25,7 @@ const that = module.exports = {
 
 	parseRoomName(roomName) {
 		if (roomName === 'sim') {
-			return 0;
+			return 0x8080;
 		} else {
 			let rx = parseInt(roomName.substr(1), 10);
 			let verticalPos = 2;
@@ -44,19 +38,19 @@ const that = module.exports = {
 			let horizontalDir = roomName.charAt(0);
 			let verticalDir = roomName.charAt(verticalPos);
 			if (horizontalDir === 'W') {
-				rx = -rx - 1;
+				rx = 0xff - rx;
 			}
 			if (verticalDir === 'N') {
-				ry = -ry - 1;
+				ry = 0xff - ry;
 			}
-			return ((ry + kWorldSize2) << 16) | (rx + kWorldSize2);
+			return rx | (ry << 8);
 		}
 	},
 
-	getVisual(xx, yy) {
-		let visual = visualCache.get(xx * kWorldSize + yy);
+	getVisual(bits) {
+		let visual = visualCache.get(bits);
 		if (visual === undefined) {
-			visualCache.set(xx * kWorldSize + yy, visual = new RoomVisual(that.generateRoomName(xx, yy)));
+			visualCache.set(bits, visual = new RoomVisual(that.generateRoomName(bits)));
 		}
 		return visual;
 	},

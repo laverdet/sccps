@@ -18,6 +18,7 @@ template <> struct serialize_number_t<size_t> { using as = uint32_t; };
 template <> struct serialize_number_t<int> { using as = int32_t; };
 template <> struct serialize_number_t<unsigned int> { using as = uint32_t; };
 template <> struct serialize_number_t<char> { using as = int8_t; };
+template <> struct serialize_number_t<signed char> { using as = int8_t; };
 template <> struct serialize_number_t<unsigned char> { using as = uint8_t; };
 template <> struct serialize_number_t<bool> { using as = uint8_t; };
 
@@ -101,6 +102,8 @@ class memory_t {
 	friend raw_memory_t;
 	public:
 		explicit memory_t(size_t bytes) : memory(bytes), pos(memory.data()) {}
+		memory_t(const memory_t&) = delete;
+		memory_t& operator=(const memory_t&) = delete;
 
 		size_t capacity() const {
 			return memory.size();
@@ -119,7 +122,7 @@ class memory_t {
 		}
 
 	protected:
-		static constexpr int32_t k_internal_version = 2;
+		static constexpr int32_t k_internal_version = 3;
 		static constexpr int32_t k_magic = 0x8af88ecd;
 		std::vector<uint8_t> memory;
 		uint8_t* pos;

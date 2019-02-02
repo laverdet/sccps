@@ -185,7 +185,7 @@ std::ostream& operator<<(std::ostream& os, const structure_t& that) {
 		case structure_t::tower: os <<"tower"; break;
 		case structure_t::wall: os <<"wall"; break;
 	}
-	os <<", [" <<that.pos.room_location() <<" " <<that.pos.xx % 50 <<", " <<that.pos.yy % 50 <<"], " <<that.id <<"]";
+	os <<", [" <<that.pos.room <<" " <<that.pos.xx % 50 <<", " <<that.pos.yy % 50 <<"], " <<that.id <<"]";
 	return os;
 }
 
