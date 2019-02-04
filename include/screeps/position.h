@@ -15,9 +15,9 @@ enum struct direction_t;
 struct room_location_t;
 struct position_t;
 struct local_position_t;
-struct world_position_t;
 
 namespace detail {
+
 // Converts coordinate objects into raw bytes. All location objects are <= word size so we can use
 // this for comparisons and hashing.
 template <class Type>
@@ -80,7 +80,6 @@ struct alignas(int32_t) position_t {
 	position_t() = default;
 	constexpr position_t(room_location_t room, int xx, int yy) : xx(xx), yy(yy), room(room) {}
 	constexpr position_t(room_location_t room, local_position_t pos);
-	constexpr position_t(world_position_t pos); // NOLINT(hicpp-explicit-conversions)
 
 	template <class Memory> void serialize(Memory& memory) { memory & xx & yy & room; }
 	friend std::ostream& operator<<(std::ostream& os, position_t that);
@@ -93,6 +92,7 @@ struct alignas(int32_t) position_t {
 	constexpr bool operator>=(position_t rhs) const { return !(*this < rhs); }
 	constexpr local_position_t operator~() const;
 
+	constexpr int distance_to(position_t that) const;
 	constexpr direction_t direction_to(position_t that) const;
 	constexpr position_t in_direction(direction_t direction) const;
 	constexpr bool near_to(position_t that) const;
@@ -100,6 +100,8 @@ struct alignas(int32_t) position_t {
 	constexpr int range_to_edge() const;
 
 	constexpr auto neighbors() const;
+	constexpr auto world_neighbors() const;
+	template <class... Types> constexpr auto within_range(int range, Types&&... others) const;
 
 	static const position_t null;
 };
@@ -131,39 +133,13 @@ struct alignas(int16_t) local_position_t {
 
 	constexpr auto neighbors() const;
 	constexpr auto with_range(int range) const;
-	constexpr auto within_range(int range) const;
-	template <class Container>
-	constexpr auto within_range(int range, Container&& container) const;
+	template <class... Types> constexpr auto within_range(int range, Types&&... others) const;
 	static constexpr auto all();
 	static constexpr auto area(local_position_t top_left, local_position_t bottom_right);
 
 	static const local_position_t null;
 };
 inline const local_position_t local_position_t::null = local_position_t(0xff, 0xff);
-
-// Similar to `position_t` except the accessors cross room borders. Primarily useful if you're doing
-// custom pathfinding stuff.
-struct alignas(int32_t) world_position_t {
-	uint16_t xx;
-	uint16_t yy;
-
-	world_position_t() = default;
-	constexpr world_position_t(unsigned xx, unsigned yy) : xx(xx), yy(yy) {}
-	constexpr world_position_t(position_t position); // NOLINT(hicpp-explicit-conversions)
-
-	constexpr direction_t direction_to(world_position_t that) const;
-	constexpr world_position_t in_direction(direction_t direction) const;
-	constexpr int range_to(world_position_t that) const;
-
-	constexpr auto neighbors() const;
-
-	constexpr room_location_t room_location() const {
-		return {static_cast<int8_t>(xx / 50u - 0x80), static_cast<int8_t>(yy / 50u - 0x80)};
-	}
-
-	static const world_position_t null;
-};
-inline const world_position_t world_position_t::null = world_position_t(UINT_MAX, UINT_MAX);
 
 //
 // Implementation details follow
@@ -190,6 +166,26 @@ constexpr const char* atoi(const char* begin, const char* end, int8_t& result) {
 		}
 	} while (begin != end);
 	return begin;
+}
+
+// Iterates nested ranges. Probably not a good idea but we'll see
+template <class...> struct voider { using type = void; };
+template <class... Types> using void_t = typename voider<Types...>::type;
+template <class Type, class = void> struct is_range: std::false_type {};
+template <class Type> struct is_range<Type, void_t<decltype(std::declval<Type>().begin())>> : std::true_type {};
+
+template <class Function, class... Types>
+void iterate(Function function, Types&&... ranges_or_elements) {
+	auto helper = [&](const auto& helper, auto&& that) {
+		if constexpr (is_range<decltype(that)>::value) {
+			for (auto ii = that.begin(); ii != that.end(); ++ii) {
+				helper(helper, *ii);
+			}
+		} else {
+			function(that);
+		}
+	};
+	(helper(helper, std::forward<Types>(ranges_or_elements)), ...);
 }
 
 template <class Position>
@@ -221,7 +217,6 @@ constexpr direction_t direction_to(Position first, Position second) {
 	}
 }
 
-// Used by `local_position_t` and `world_position_t`
 template <class Position>
 constexpr Position in_direction(Position position, direction_t direction) {
 	auto one = std::conditional_t<
@@ -250,6 +245,34 @@ constexpr Position in_direction(Position position, direction_t direction) {
 			throw std::invalid_argument("Invalid direction");
 	}
 }
+
+// Intermediary position used internally to simply cross-room coordinate calculations.
+struct alignas(int32_t) world_position_t {
+	uint16_t xx;
+	uint16_t yy;
+
+	world_position_t() = default;
+	constexpr world_position_t(unsigned xx, unsigned yy) : xx(xx), yy(yy) {}
+	constexpr world_position_t(position_t position) : // NOLINT(hicpp-explicit-conversions)
+		world_position_t((position.room.xx + 0x80) * 50u + position.xx, (position.room.yy + 0x80) * 50u + position.yy) {
+	}
+
+	constexpr operator position_t() const { // NOLINT(hicpp-explicit-conversions)
+		return {location(), xx % 50, yy % 50};
+	}
+
+	constexpr direction_t direction_to(world_position_t that) const {
+		return detail::direction_to(*this, that);
+	}
+
+	constexpr world_position_t in_direction(direction_t direction) const {
+		return detail::in_direction(*this, direction);
+	}
+
+	constexpr room_location_t location() const {
+		return {static_cast<int8_t>(xx / 50u - 0x80), static_cast<int8_t>(yy / 50u - 0x80)};
+	}
+};
 
 // Generates a range of directions by template stored indefinitely and returns them
 template <direction_t... Directions>
@@ -373,7 +396,7 @@ struct all_iteratable_t {
 };
 
 // Iterates all positions between a top left and bottom right corner position.
-template <class Position>
+template <class Position, class Holder = Position>
 class area_iterable_t {
 	public:
 		class iterator : public random_access_iterator_t<iterator> {
@@ -383,34 +406,34 @@ class area_iterable_t {
 				using reference = Position;
 
 				constexpr iterator() = default;
-				constexpr iterator(int offset, int width, int index) : offset(offset), width(width), index(index) {}
+				constexpr iterator(unsigned offset, unsigned width, unsigned index) : offset(offset), width(width), index(index) {}
 
-				constexpr reference operator*() const { return {offset + index % width, index / width}; }
+				constexpr reference operator*() const { return Holder(offset + index % width, index / width); }
 				constexpr bool operator==(const iterator& rhs) const { return index == rhs.index; }
 				constexpr bool operator<(const iterator& rhs) const { return index < rhs.index; }
 				constexpr iterator& operator+=(int val) { index += val; return *this; }
 
 			private:
-				int offset = 0, width = 0, index = 0;
+				unsigned offset = 0, width = 0, index = 0;
 		};
 		using const_iterator = iterator;
 
-		constexpr area_iterable_t(Position top_left, Position bottom_right) :
+		constexpr area_iterable_t(Holder top_left, Holder bottom_right) :
 			offset(top_left.xx),
 			width(bottom_right.xx - top_left.xx + 1),
 			index(top_left.yy * width),
-			final_index(index + std::max(0, (bottom_right.yy - top_left.yy + 1) * width)) {
+			final_index(index + (bottom_right.yy - top_left.yy + 1) * width) {
 		}
 
 		constexpr iterator begin() const { return {offset, width, index}; }
 		constexpr iterator end() const { return {offset, width, final_index}; }
 
 	private:
-		int offset, width, index, final_index;
+		unsigned offset, width, index, final_index;
 };
 
 // Iterates all neighbors from an origin.
-template <class Position>
+template <class Position, class Holder = Position>
 class neighbor_iterable_t {
 	public:
 		class iterator : public random_access_iterator_t<iterator> {
@@ -420,21 +443,21 @@ class neighbor_iterable_t {
 				using reference = Position;
 
 				constexpr iterator() = default;
-				constexpr iterator(Position origin, const direction_t* direction) : origin(origin), direction(direction) {}
+				constexpr iterator(Holder origin, const direction_t* direction) : origin(origin), direction(direction) {}
 
-				Position operator*() const { return origin.in_direction(*direction); }
+				reference operator*() const { return origin.in_direction(*direction); }
 				constexpr bool operator==(const iterator& rhs) const { return direction == rhs.direction; }
 				constexpr bool operator<(const iterator& rhs) const { return direction < rhs.direction; }
 				constexpr iterator& operator+=(int val) { direction += val; return *this; }
 
 			private:
-				Position origin;
+				Holder origin;
 				const direction_t* direction = nullptr;
 		};
 		using const_iterator = iterator;
 
 	public:
-		static constexpr neighbor_iterable_t local_neighbors(Position origin) {
+		static constexpr neighbor_iterable_t local_neighbors(Holder origin) {
 			if (origin.xx == 0) {
 				if (origin.yy == 0) {
 					// Top left corner
@@ -469,7 +492,7 @@ class neighbor_iterable_t {
 			}
 		}
 
-		static constexpr neighbor_iterable_t world_neighbors(Position origin) {
+		static constexpr neighbor_iterable_t world_neighbors(Holder origin) {
 			if (origin.xx == 0) {
 				if (origin.yy == 0) {
 					// Top left corner
@@ -509,10 +532,10 @@ class neighbor_iterable_t {
 
 	private:
 		constexpr neighbor_iterable_t(
-			Position origin, std::pair<const direction_t*, const direction_t*> range
+			Holder origin, std::pair<const direction_t*, const direction_t*> range
 		) : origin(origin), _begin(range.first), _end(range.second) {}
 
-		Position origin;
+		Holder origin;
 		const direction_t* _begin;
 		const direction_t* _end;
 };
@@ -709,18 +732,24 @@ constexpr position_t room_location_t::operator[](local_position_t pos) const {
 //
 // position_t inlines
 constexpr position_t::position_t(room_location_t room, local_position_t pos) : xx(pos.xx), yy(pos.yy), room(room) {}
-constexpr position_t::position_t(world_position_t pos) : xx(pos.xx % 50), yy(pos.yy % 50), room(pos.room_location()) {}
 
 constexpr local_position_t position_t::operator~() const {
 	return {xx, yy};
 }
 
+constexpr int position_t::distance_to(position_t that) const {
+	return std::max(
+		(room.xx * 50 + xx) - (that.room.xx * 50 + that.xx),
+		(room.yy * 50 + yy) - (that.room.yy * 50 + that.yy)
+	);
+}
+
 constexpr direction_t position_t::direction_to(position_t that) const {
-	return world_position_t(*this).direction_to(that);
+	return detail::world_position_t(*this).direction_to(that);
 }
 
 constexpr position_t position_t::in_direction(direction_t direction) const {
-	return world_position_t(*this).in_direction(direction);
+	return detail::world_position_t(*this).in_direction(direction);
 }
 
 constexpr bool position_t::near_to(position_t that) const {
@@ -743,7 +772,27 @@ constexpr int position_t::range_to_edge() const {
 }
 
 constexpr auto position_t::neighbors() const {
-	return detail::neighbor_iterable_t<position_t>::local_neighbors(*this);
+	return detail::neighbor_iterable_t<position_t, detail::world_position_t>::local_neighbors(*this);
+}
+
+constexpr auto position_t::world_neighbors() const {
+	return detail::neighbor_iterable_t<position_t, detail::world_position_t>::world_neighbors(*this);
+}
+
+template <class... Types>
+constexpr auto position_t::within_range(int range, Types&&... others) const {
+	detail::world_position_t top_left(position_t(room, std::max(0, xx - range), std::max(0, yy - range)));
+	detail::world_position_t bottom_right(position_t(room, std::min(49, xx + range), std::min(49, yy + range)));
+	detail::iterate([&](detail::world_position_t pos) {
+		top_left.xx = std::max(top_left.xx, pos.xx);
+		top_left.yy = std::max(top_left.yy, pos.yy);
+		bottom_right.xx = std::min(bottom_right.xx, pos.xx);
+		bottom_right.yy = std::min(bottom_right.yy, pos.yy);
+	}, std::forward<Types>(others)...);
+	if (top_left.location() != bottom_right.location()) {
+		top_left = bottom_right;
+	}
+	return detail::area_iterable_t<position_t, detail::world_position_t>(top_left, bottom_right);
 }
 
 //
@@ -775,28 +824,17 @@ constexpr auto local_position_t::with_range(int range) const {
 	return detail::with_range_iterable_t<local_position_t>::local_range(*this, range);
 }
 
-constexpr auto local_position_t::within_range(int range) const {
-	return detail::area_iterable_t<local_position_t>{
-		local_position_t(std::max(0, xx - range), std::max(0, yy - range)),
-		local_position_t(std::min(49, xx + range), std::min(49, yy + range))
-	};
-}
-
-template <class Container>
-constexpr auto local_position_t::within_range(int range, Container&& container) const {
+template <class... Types>
+constexpr auto local_position_t::within_range(int range, Types&&... others) const {
 	local_position_t top_left(std::max(0, xx - range), std::max(0, yy - range));
 	local_position_t bottom_right(std::min(49, xx + range), std::min(49, yy + range));
-	for (auto pos : container) {
-		top_left = local_position_t(
-			std::max<int16_t>(top_left.xx, pos.xx - range),
-			std::max<int16_t>(top_left.yy, pos.yy - range)
-		);
-		bottom_right = local_position_t(
-			std::min<int16_t>(bottom_right.xx, pos.xx + range),
-			std::min<int16_t>(bottom_right.yy, pos.yy + range)
-		);
-	}
-	return detail::area_iterable_t<local_position_t>{top_left, bottom_right};
+	detail::iterate([&](local_position_t pos) {
+		top_left.xx = std::max<int>(top_left.xx, pos.xx - range);
+		top_left.yy = std::max<int>(top_left.yy, pos.yy - range);
+		bottom_right.xx = std::min<int>(bottom_right.xx, pos.xx + range);
+		bottom_right.yy = std::min<int>(bottom_right.yy, pos.yy + range);
+	}, std::forward<Types>(others)...);
+	return detail::area_iterable_t<local_position_t>(top_left, bottom_right);
 }
 
 constexpr auto local_position_t::all() {
@@ -808,32 +846,6 @@ constexpr auto local_position_t::area(local_position_t top_left, local_position_
 		throw std::domain_error("Invalid area corners");
 	}
 	return detail::area_iterable_t<local_position_t>{top_left, bottom_right};
-}
-
-//
-// world_position_t inlines
-constexpr world_position_t::world_position_t(position_t position) : world_position_t(
-	(position.room.xx + 0x80) * 50u + position.xx,
-	(position.room.yy + 0x80) * 50u + position.yy) {
-}
-
-constexpr direction_t world_position_t::direction_to(world_position_t that) const {
-	return detail::direction_to(*this, that);
-}
-
-constexpr world_position_t world_position_t::in_direction(direction_t direction) const {
-	return detail::in_direction(*this, direction);
-}
-
-constexpr int world_position_t::range_to(world_position_t that) const {
-	return std::max(
-		xx > that.xx ? xx - that.xx : that.xx - xx,
-		yy > that.yy ? yy - that.yy : that.yy - yy
-	);
-}
-
-constexpr auto world_position_t::neighbors() const {
-	return detail::neighbor_iterable_t<world_position_t>::world_neighbors(*this);
 }
 
 namespace detail {
@@ -1011,12 +1023,6 @@ template <> struct std::hash<screeps::position_t> {
 
 template <> struct std::hash<screeps::local_position_t> {
 	constexpr size_t operator()(const screeps::local_position_t& position) const {
-		return screeps::detail::flatten(position);
-	}
-};
-
-template <> struct std::hash<screeps::world_position_t> {
-	constexpr size_t operator()(const screeps::world_position_t& position) const {
 		return screeps::detail::flatten(position);
 	}
 };

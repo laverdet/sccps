@@ -38,13 +38,13 @@ std::ostream& operator<<(std::ostream& os, room_location_t location) {
 	return os;
 }
 
-std::ostream& operator<<(std::ostream& os, local_position_t position) {
-	os <<"local_position_t(" <<static_cast<int>(position.xx) <<", " <<static_cast<int>(position.yy) <<")";
+std::ostream& operator<<(std::ostream& os, position_t position) {
+	os <<"position_t(\"" <<position.room <<"\", " <<static_cast<int>(position.xx) <<", " <<static_cast<int>(position.yy) <<")";
 	return os;
 }
 
-std::ostream& operator<<(std::ostream& os, position_t position) {
-	os <<"position_t(\"" <<position.room <<"\", " <<static_cast<int>(position.xx) <<", " <<static_cast<int>(position.yy) <<")";
+std::ostream& operator<<(std::ostream& os, local_position_t position) {
+	os <<"local_position_t(" <<static_cast<int>(position.xx) <<", " <<static_cast<int>(position.yy) <<")";
 	return os;
 }
 
