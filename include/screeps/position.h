@@ -247,9 +247,9 @@ constexpr Position in_direction(Position position, direction_t direction) {
 }
 
 // Intermediary position used internally to simply cross-room coordinate calculations.
-struct alignas(int32_t) world_position_t {
-	uint16_t xx;
-	uint16_t yy;
+struct world_position_t {
+	unsigned xx;
+	unsigned yy;
 
 	world_position_t() = default;
 	constexpr world_position_t(unsigned xx, unsigned yy) : xx(xx), yy(yy) {}
@@ -258,7 +258,7 @@ struct alignas(int32_t) world_position_t {
 	}
 
 	constexpr operator position_t() const { // NOLINT(hicpp-explicit-conversions)
-		return {location(), xx % 50, yy % 50};
+		return {location(), static_cast<int>(xx % 50), static_cast<int>(yy % 50)};
 	}
 
 	constexpr direction_t direction_to(world_position_t that) const {
@@ -765,10 +765,7 @@ constexpr int position_t::range_to(position_t that) const {
 }
 
 constexpr int position_t::range_to_edge() const {
-	return 24 - std::min(
-		detail::abs(xx - 24) - xx / 25,
-		detail::abs(yy - 24) - yy / 25
-	);
+	return (~*this).range_to_edge();
 }
 
 constexpr auto position_t::neighbors() const {
@@ -784,13 +781,13 @@ constexpr auto position_t::within_range(int range, Types&&... others) const {
 	detail::world_position_t top_left(position_t(room, std::max(0, xx - range), std::max(0, yy - range)));
 	detail::world_position_t bottom_right(position_t(room, std::min(49, xx + range), std::min(49, yy + range)));
 	detail::iterate([&](detail::world_position_t pos) {
-		top_left.xx = std::max(top_left.xx, pos.xx);
-		top_left.yy = std::max(top_left.yy, pos.yy);
-		bottom_right.xx = std::min(bottom_right.xx, pos.xx);
-		bottom_right.yy = std::min(bottom_right.yy, pos.yy);
+		top_left.xx = std::max(top_left.xx, pos.xx - range);
+		top_left.yy = std::max(top_left.yy, pos.yy - range);
+		bottom_right.xx = std::min(bottom_right.xx, pos.xx + range);
+		bottom_right.yy = std::min(bottom_right.yy, pos.yy + range);
 	}, std::forward<Types>(others)...);
 	if (top_left.location() != bottom_right.location()) {
-		top_left = bottom_right;
+		bottom_right.yy = top_left.yy - 1;
 	}
 	return detail::area_iterable_t<position_t, detail::world_position_t>(top_left, bottom_right);
 }
@@ -810,7 +807,7 @@ constexpr int local_position_t::range_to(local_position_t that) const {
 }
 
 constexpr int local_position_t::range_to_edge() const {
-	return 24 - std::min(
+	return 24 - std::max(
 		detail::abs(xx - 24) - xx / 25,
 		detail::abs(yy - 24) - yy / 25
 	);
