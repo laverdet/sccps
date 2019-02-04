@@ -58,7 +58,13 @@ NAN_METHOD(mod_room_ensure_capacity) {
 }
 
 NAN_METHOD(mod_loop) {
-	loop();
+	Nan::TryCatch try_catch;
+	try {
+		loop();
+	} catch (const screeps::js_error&) {
+		assert(try_catch.HasCaught());
+		try_catch.ReThrow();
+	}
 }
 
 ISOLATED_VM_MODULE void InitForContext(Isolate* isolate, Local<Context> context, Local<Object> target) {

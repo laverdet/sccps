@@ -1,8 +1,28 @@
 #include <screeps/cpu.h>
+#include "./javascript.h"
+
+namespace {
+	static screeps::cpu::native_heap_t heap_status;
+}
+
+namespace screeps::cpu {
+
+const native_heap_t& get_native_heap_statistics() {
+	return heap_status;
+}
+
+void halt() {
+#ifdef JAVASCRIPT
+	EM_ASM({ Game.cpu.halt(); });
+#endif
+	std::terminate();
+}
+
+} // namespace screeps::cpu
+
+
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
-static screeps::cpu::native_heap_t heap_status;
-
 extern "C" {
 
 extern void* emscripten_builtin_malloc(size_t size);
@@ -25,28 +45,13 @@ void free(void* ptr) {
 }
 
 namespace screeps::cpu {
-	const native_heap_t& get_native_heap_statistics() {
-		return heap_status;
-	}
-
 	EMSCRIPTEN_KEEPALIVE
 	void adjust_memory_size(int memory) {
 		heap_status.size += memory;
 	}
-
 } // namespace screeps::cpu
 
-#else
-
-namespace { static screeps::cpu::native_heap_t heap_status; }
-
-namespace screeps::cpu {
-	const native_heap_t& get_native_heap_statistics() {
-		return heap_status;
-	}
-} // namespace screeps::cpu
-
-#ifdef __APPLE__
+#elif __APPLE__
 #include <mach/mach.h>
 #include <malloc/malloc.h>
 #include <mutex>
@@ -146,5 +151,4 @@ struct zone_malloc_overwrite_t {
 };
 namespace { static zone_malloc_overwrite_t ctor; }
 
-#endif
 #endif

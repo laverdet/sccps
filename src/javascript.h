@@ -5,8 +5,8 @@
 #elif BUILDING_NODE_EXTENSION
 #define JAVASCRIPT
 #define EMSCRIPTEN_KEEPALIVE
-#define EM_ASM(code, args...) (inline_javascript(#code, args))
-#define EM_ASM_INT(code, args...) (inline_javascript(#code, args))
+#define EM_ASM(code, ...) (inline_javascript(#code, ##__VA_ARGS__))
+#define EM_ASM_INT(code, ...) (inline_javascript(#code, ##__VA_ARGS__))
 #include <nan.h>
 #include <cstdint>
 #include <cstdio>
@@ -15,6 +15,8 @@
 #include <type_traits>
 
 namespace screeps {
+class js_error : public std::exception {};
+
 template <class Type>
 v8::Local<Type> unwrap_maybe(v8::MaybeLocal<Type> value) {
 	v8::Local<Type> unwrapped;
@@ -61,6 +63,8 @@ int inline_javascript(const char* fragment, Args... args) {
 		if (try_catch.HasCaught()) {
 			Nan::Utf8String error(Nan::Get(Nan::To<v8::Object>(try_catch.Exception()).ToLocalChecked(), Nan::New("stack").ToLocalChecked()).ToLocalChecked());
 			fprintf(stderr, "%s\n", *error);
+			try_catch.ReThrow();
+			throw js_error();
 		}
 		throw;
 	}
@@ -77,6 +81,6 @@ int tried_to_run_javascript(const char* code, Args&&... /* args */) {
 }
 }
 #define EMSCRIPTEN_KEEPALIVE
-#define EM_ASM(code, args...) (tried_to_run_javascript(#code, args))
-#define EM_ASM_INT(code, args...) (tried_to_run_javascript(#code, args))
+#define EM_ASM(code, args...) (tried_to_run_javascript(#code, ##__VA_ARGS__))
+#define EM_ASM_INT(code, args...) (tried_to_run_javascript(#code, ##__VA_ARGS__))
 #endif

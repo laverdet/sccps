@@ -310,7 +310,8 @@ function* initialize() {
 	return function() {
 		flush();
 		if (!didExitCleanly) {
-			print(2, 'Engine is in undefined state, refusing to run loop');
+			print(2, 'Engine is in undefined state, CPU halt');
+			Game.cpu.halt();
 			return;
 		}
 		if (Game.cpu.limit + Game.cpu.bucket === Game.cpu.tickLimit) {

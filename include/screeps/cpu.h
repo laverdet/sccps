@@ -9,4 +9,5 @@ namespace screeps::cpu {
 	};
 
 	const native_heap_t& get_native_heap_statistics();
+	void halt();
 }; // namespace screeps::cpu
